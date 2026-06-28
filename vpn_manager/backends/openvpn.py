@@ -394,6 +394,27 @@ class OpenVpnBackend(VpnBackend):
                 info.routes.append(" ".join(parts[1:]))
         return info
 
+    def update_server_config(self, directives: list[tuple[str, str]]) -> ServerInfo:
+        """Valida y reescribe el server.conf a partir de la lista de directivas."""
+        from .openvpn_schema import validate_directive
+
+        if not self.server_conf:
+            raise VpnError("No hay fichero de configuración del servidor definido.")
+        cleaned: list[str] = []
+        for key, value in directives:
+            key = (key or "").strip()
+            value = (value or "").strip()
+            if not key:
+                continue
+            err = validate_directive(key, value)
+            if err:
+                raise InvalidName(err)
+            cleaned.append(f"{key} {value}".rstrip())
+        header = "# Configuración del servidor OpenVPN — gestionada por VPN Manager"
+        self.server_conf.parent.mkdir(parents=True, exist_ok=True)
+        self.server_conf.write_text(header + "\n" + "\n".join(cleaned) + "\n", encoding="utf-8")
+        return self.server_info()
+
     # ── Registros ──────────────────────────────────────────────────────────
     def logs(self, lines: int = 50) -> list[str]:
         lines = max(1, min(lines, 1000))

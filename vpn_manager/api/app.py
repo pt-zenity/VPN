@@ -98,6 +98,15 @@ class CreateClient(BaseModel):
     name: str = Field(min_length=1, max_length=64)
 
 
+class Directive(BaseModel):
+    key: str = Field(min_length=1, max_length=41)
+    value: str = Field(default="", max_length=512)
+
+
+class ServerConfigUpdate(BaseModel):
+    directives: list[Directive] = Field(max_length=200)
+
+
 class SavePath(BaseModel):
     path: str = Field(min_length=1, max_length=512)
 
@@ -235,6 +244,23 @@ def openvpn_connections() -> list[VpnConnection]:
 @app.get("/api/openvpn/server", response_model=ServerInfo, dependencies=_PROTECTED)
 def openvpn_server() -> ServerInfo:
     return _openvpn().server_info()
+
+
+@app.get("/api/openvpn/server/schema", dependencies=_PROTECTED)
+def openvpn_server_schema() -> dict:
+    from ..backends.openvpn_schema import FIELDS
+
+    return {"fields": FIELDS}
+
+
+@app.put("/api/openvpn/server", response_model=ServerInfo, dependencies=_PROTECTED)
+def openvpn_server_update(body: ServerConfigUpdate, user: str = Depends(require_user)) -> ServerInfo:
+    try:
+        info = _openvpn().update_server_config([(d.key, d.value) for d in body.directives])
+    except VpnError as e:
+        raise _http(e) from e
+    log.info("configuración del servidor OpenVPN modificada por %s", user)
+    return info
 
 
 @app.get("/api/openvpn/logs", dependencies=_PROTECTED)

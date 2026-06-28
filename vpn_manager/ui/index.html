@@ -118,6 +118,24 @@
   .allcfg summary::-webkit-details-marker{display:none}
   .allcfg pre{margin:0;padding:2px 18px 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
     font-size:12.5px;line-height:1.7;color:#3a3f45;white-space:pre-wrap;word-break:break-word}
+  /* Formulario de edición de la configuración */
+  .cfgform{padding:6px 0}
+  .cfgrow{display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start;padding:13px 20px;border-top:1px solid var(--line)}
+  .cfgrow:first-child{border-top:0}
+  .cfgrow .lab{font-size:13.5px;font-weight:560}
+  .cfgrow .lab small{display:block;color:var(--faint);font-weight:400;font-size:12px;margin-top:3px;line-height:1.4}
+  .cfgrow input[type=text],.cfgrow input[type=number],.cfgrow select{width:100%;font:inherit;font-size:14px;
+    padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;background:#fff;color:var(--ink)}
+  .cfgrow input:focus,.cfgrow select:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  .cfgrow .bad{border-color:var(--stop)!important}
+  .cfgrow.toggle .ctrl{display:flex;align-items:center;gap:9px}
+  .cfgrow .errmsg{color:var(--stop);font-size:12px;margin-top:5px;display:none}
+  .cfgsub{padding:16px 20px 6px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);border-top:1px solid var(--line)}
+  .advrow{display:grid;grid-template-columns:230px 1fr auto;gap:10px;padding:7px 20px;align-items:center}
+  .advrow input{font:inherit;font-size:13.5px;padding:7px 10px;border:1px solid var(--line-strong);border-radius:8px;background:#fff}
+  .advrow .del{border:0;background:none;color:var(--stop);cursor:pointer;font-size:18px;line-height:1;padding:0 6px}
+  .cfgbar{display:flex;gap:10px;justify-content:flex-end;padding:16px 20px;border-top:1px solid var(--line);background:#fafafa}
+  .cfgbar .addadv{margin-right:auto}
   .logbox{margin:0;padding:16px 20px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
     font-size:12.5px;line-height:1.7;color:#3a3f45;white-space:pre-wrap;word-break:break-word;
     max-height:360px;overflow:auto}
@@ -185,7 +203,10 @@
     </section>
 
     <section id="servidor">
-      <div class="sechead"><div><h2>Configuración del servidor</h2><p class="hint">Parámetros con los que está funcionando el servidor OpenVPN.</p></div></div>
+      <div class="sechead">
+        <div><h2>Configuración del servidor</h2><p class="hint">Parámetros con los que está funcionando el servidor OpenVPN. Puedes editarlos.</p></div>
+        <button class="btn" id="cfg-edit-btn" onclick="editServer()">Editar configuración</button>
+      </div>
       <div class="panel"><div id="server-info"><div class="empty">Cargando…</div></div></div>
     </section>
 
@@ -298,6 +319,8 @@ function renderService(st){
 }
 
 function renderServer(sv){
+  _serverInfo = sv;
+  if(_editingServer) return;  // no pisar el formulario mientras se edita
   const item=(k,v,mono)=> v ? `<div class="srv-item"><div class="k">${k}</div><div class="v${mono?' mono':''}">${v}</div></div>` : '';
   const tags=arr=> (arr&&arr.length)? arr.map(x=>`<span class="tag">${esc(x)}</span>`).join('') : '';
   const ciphers = sv.cipher ? sv.cipher.split(':').map(c=>`<span class="tag">${esc(c)}</span>`).join('') : '';
@@ -320,6 +343,95 @@ function renderServer(sv){
        <pre>${sv.directives.map(d=>esc(d.key+(d.value?' '+d.value:''))).join('\n')}</pre></details>` : '';
   document.getElementById('server-info').innerHTML =
     (grid? `<div class="srvgrid">${grid}</div>`:'<div class="empty">No se encontró la configuración del servidor.</div>') + all;
+}
+
+let _serverInfo = null;
+let _cfgSchema = null;
+let _editingServer = false;
+
+function renderServerView(){
+  document.getElementById('cfg-edit-btn').style.display = '';
+}
+
+// ── Edición de la configuración del servidor ──
+async function editServer(){
+  if(!_cfgSchema){
+    try{ _cfgSchema = (await fetch('/api/openvpn/server/schema').then(r=>r.json())).fields; }
+    catch(e){ toast('No se pudo cargar el formulario.'); return; }
+  }
+  document.getElementById('cfg-edit-btn').style.display = 'none';
+  _editingServer = true;
+  const sv = _serverInfo || {directives:[]};
+  const dirs = sv.directives || [];
+  const first = k => { const d = dirs.find(x=>x.key===k); return d ? d.value : null; };
+  const known = new Set(_cfgSchema.map(f=>f.key));
+
+  const fieldHtml = f => {
+    const cur = first(f.key);
+    const id = 'cf-'+f.key;
+    let ctrl='';
+    if(f.type==='toggle'){
+      ctrl = `<div class="ctrl"><input type="checkbox" id="${id}" ${cur!==null?'checked':''}> <label for="${id}" style="font-size:13.5px;color:var(--muted)">Activado</label></div>`;
+    }else if(f.type==='select'){
+      ctrl = `<select id="${id}">`+(cur && !f.options.includes(cur)?`<option value="${esc(cur)}">${esc(cur)} (actual)</option>`:'')+
+        f.options.map(o=>`<option ${o===cur?'selected':''}>${esc(o)}</option>`).join('')+`</select>`;
+    }else{
+      const type = f.type==='number'?'number':'text';
+      const extra = f.type==='number'?`${f.min!==undefined?`min="${f.min}"`:''} ${f.max!==undefined?`max="${f.max}"`:''}`:'';
+      ctrl = `<input type="${type}" id="${id}" value="${cur!==null?esc(cur):''}" ${extra} data-key="${f.key}">`;
+    }
+    return `<div class="cfgrow ${f.type==='toggle'?'toggle':''}">
+      <div class="lab">${esc(f.label)}<small>${esc(f.desc)}</small></div>
+      <div>${ctrl}<div class="errmsg" id="err-${f.key}"></div></div></div>`;
+  };
+
+  const advanced = dirs.filter(d => !known.has(d.key));
+  const advHtml = advanced.map((d,i)=>advRowHtml(d.key,d.value,i)).join('');
+
+  document.getElementById('server-info').innerHTML = `
+    <div class="cfgform" id="cfgform">
+      ${_cfgSchema.map(fieldHtml).join('')}
+      <div class="cfgsub">Otras directivas (avanzado)</div>
+      <div id="adv-rows">${advHtml}</div>
+      <div class="cfgbar">
+        <button class="btn addadv" type="button" onclick="addAdvRow()">+ Añadir directiva</button>
+        <button class="btn" type="button" onclick="cancelServer()">Cancelar</button>
+        <button class="btn primary" type="button" onclick="saveServer()">Guardar configuración</button>
+      </div>
+    </div>`;
+}
+function advRowHtml(k,v,i){
+  return `<div class="advrow" data-adv>
+    <input type="text" placeholder="directiva" value="${esc(k)}" data-advkey>
+    <input type="text" placeholder="valor" value="${esc(v)}" data-advval>
+    <button class="del" type="button" title="Quitar" onclick="this.parentNode.remove()">×</button></div>`;
+}
+function addAdvRow(){ document.getElementById('adv-rows').insertAdjacentHTML('beforeend', advRowHtml('','')); }
+function cancelServer(){ _editingServer=false; renderServer(_serverInfo); document.getElementById('cfg-edit-btn').style.display=''; }
+
+async function saveServer(){
+  const directives = [];
+  for(const f of _cfgSchema){
+    const el = document.getElementById('cf-'+f.key);
+    if(!el) continue;
+    if(f.type==='toggle'){ if(el.checked) directives.push({key:f.key, value:''}); }
+    else { const v=(el.value||'').trim(); if(v!=='') directives.push({key:f.key, value:v}); }
+  }
+  document.querySelectorAll('#adv-rows [data-adv]').forEach(row=>{
+    const k=row.querySelector('[data-advkey]').value.trim();
+    const v=row.querySelector('[data-advval]').value.trim();
+    if(k) directives.push({key:k, value:v});
+  });
+  try{
+    const r = await fetch('/api/openvpn/server',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({directives})});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok){ toast(d.detail||'No se pudo guardar la configuración.'); return; }
+    _serverInfo = d;
+    _editingServer = false;
+    toast('Configuración guardada ✓ · recuerda «Recargar» el servicio');
+    renderServer(d);
+    document.getElementById('cfg-edit-btn').style.display='';
+  }catch(e){ toast('No se pudo conectar con el servidor.'); }
 }
 
 function renderStats(st, cl, cn){

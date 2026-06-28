@@ -241,6 +241,29 @@ class TestServerInfo:
         assert b.server_info().public_endpoint == "vpn.miempresa.com"
         assert "vpn.miempresa.com" in b.client_config("alice-laptop")
 
+    def test_editar_configuracion(self, tmp_backend):
+        info = tmp_backend.update_server_config(
+            [("port", "1195"), ("proto", "tcp"), ("server", "10.20.0.0 255.255.255.0"),
+             ("persist-key", "")]
+        )
+        assert info.port == "1195" and info.proto == "tcp"
+        assert info.subnet == "10.20.0.0 255.255.255.0"
+
+    def test_editar_rechaza_valores_malos(self, tmp_backend):
+        with pytest.raises(InvalidName):
+            tmp_backend.update_server_config([("port", "noesnumero")])
+        with pytest.raises(InvalidName):
+            tmp_backend.update_server_config([("proto", "ftp")])  # no está en opciones
+        with pytest.raises(InvalidName):
+            tmp_backend.update_server_config([("mal nombre", "x")])
+
+    def test_schema_tiene_campos_con_tipos(self):
+        from vpn_manager.backends.openvpn_schema import FIELDS, FIELDS_BY_KEY
+
+        assert FIELDS_BY_KEY["proto"]["type"] == "select"
+        assert "udp" in FIELDS_BY_KEY["proto"]["options"]
+        assert all("desc" in f and "label" in f for f in FIELDS)
+
 
 class TestWireGuard:
     def test_clients_lee_peers(self, tmp_wg):
@@ -353,8 +376,11 @@ class TestWriteApi:
         shutil.copy(settings.openvpn_pki_index, pki / "index.txt")
         status = tmp_path / "openvpn-status.log"
         shutil.copy(settings.openvpn_status_file, status)
+        conf = tmp_path / "server.conf"
+        shutil.copy(settings.openvpn_server_conf, conf)
         monkeypatch.setattr(settings, "openvpn_pki_index", pki / "index.txt")
         monkeypatch.setattr(settings, "openvpn_status_file", status)
+        monkeypatch.setattr(settings, "openvpn_server_conf", conf)
         monkeypatch.setattr(settings, "export_dir", tmp_path / "exports")
         self.client = TestClient(app)
         _login(self.client)
@@ -423,6 +449,18 @@ class TestWriteApi:
         assert r.status_code == 200 and r.json()["simulated"] is True
         # email inválido → 422
         r = self.client.post("/api/openvpn/clients/alice-laptop/email", json={"email": "malo"})
+        assert r.status_code == 422
+
+    def test_editar_config_servidor_por_api(self):
+        sc = self.client.get("/api/openvpn/server/schema").json()
+        assert any(f["key"] == "proto" and f["type"] == "select" for f in sc["fields"])
+        r = self.client.put("/api/openvpn/server", json={"directives": [
+            {"key": "port", "value": "1200"}, {"key": "proto", "value": "udp"},
+        ]})
+        assert r.status_code == 200 and r.json()["port"] == "1200"
+        # valor inválido → 422
+        r = self.client.put("/api/openvpn/server", json={"directives": [
+            {"key": "port", "value": "abc"}]})
         assert r.status_code == 422
 
 
