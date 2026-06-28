@@ -56,3 +56,20 @@ sin material criptográfico en el repo.
   (`VPNM_COOKIE_SECURE=true`). No exponer a internet.
 - **Antes del martes (publicación):** fijar `VPNM_ADMIN_PASSWORD_HASH` real,
   `VPNM_SECRET_KEY` y, al desplegar, `VPNM_COOKIE_SECURE=true`.
+
+## Anexo (superficie añadida tras la auditoría inicial)
+
+- **Multiusuario + roles**: permisos exigidos **en el backend** en cada endpoint (no solo
+  en la UI). 3 roles; no se puede quedar sin admin ni borrar la propia cuenta. Contraseñas
+  PBKDF2; usuario validado por regex. Verificado con tests (operador/visor reciben 403).
+- **Instalación de servicios**: alto riesgo (instala como root). Mitigado: rol admin
+  (`system:install`) + `VPNM_ALLOW_INSTALL=true` + root; **sandbox solo simula**; comandos
+  por lista (sin shell); auditoría. La distro se detecta de `/etc/os-release`.
+- **Instalación llave en mano (angristan)**: descarga **solo `https://`** de una **URL
+  fijada a commit** + **verificación SHA-256 obligatoria** (fail-closed sin checksum);
+  el script no se incluye en el repo. Mismos interruptores que arriba.
+- **Assets estáticos** (`/assets`): solo logos; servidos por StaticFiles (sin traversal).
+- **Entrega de config**: «guardar en servidor» restringido a `export_dir` (anti-traversal);
+  «correo» valida la dirección y avisa de que no es canal seguro.
+- Pendiente: rotación/expiración de sesiones por usuario; 2FA (opcional); auditoría
+  persistida (hoy va al log).

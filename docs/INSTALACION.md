@@ -81,6 +81,21 @@ Copia `.env.example` a `.env` y ajusta. Todas las variables llevan prefijo `VPNM
 | `VPNM_WIREGUARD_PUBLIC_ENDPOINT` | `vpn.ejemplo.local` |
 | `VPNM_WIREGUARD_DNS` | `1.1.1.1` |
 
+### Instalación de servicios (la app instala OpenVPN/WireGuard)
+
+| Variable | Por defecto | Descripción |
+|----------|-------------|-------------|
+| `VPNM_ALLOW_INSTALL` | `false` | Interruptor de seguridad. `true` para permitir instalar (además, el panel debe correr como **root**). |
+| `VPNM_BOOTSTRAP_OPENVPN_URL` | *(vacío)* | URL del script de angristan **fijada a un commit** (`…/<COMMIT>/openvpn-install.sh`). |
+| `VPNM_BOOTSTRAP_OPENVPN_SHA256` | *(vacío)* | SHA-256 de ese script. **Sin él no se ejecuta.** Cómputo: `curl -sL <url> \| sha256sum`. |
+| `VPNM_BOOTSTRAP_WIREGUARD_URL` / `_SHA256` | *(vacío)* | Igual para WireGuard (`angristan/wireguard-install`). |
+
+- **Instalar paquetes**: detecta la distro (apt/dnf/yum/pacman/zypper) e instala los
+  paquetes. En RHEL/derivados añade EPEL para OpenVPN.
+- **Instalación completa (llave en mano)**: descarga el script de angristan de la versión
+  fijada, **verifica su SHA-256** y lo ejecuta (configura PKI + server.conf + firewall +
+  primer cliente). En sandbox solo se **simula**.
+
 ### Entrega de configuraciones (guardar / correo)
 
 | Variable | Por defecto | Descripción |

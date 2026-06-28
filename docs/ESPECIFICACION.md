@@ -69,8 +69,12 @@ status, PKI) + UI web ligera servida por la propia API. Coherente con CyberHound
    clientes/certs (parseo de la PKI/index), conexiones activas (status file).
 2. **[HECHO] Gestión OpenVPN (escritura)**: crear cliente, descargar `.ovpn`,
    revocar (CRL). En **sandbox** (en real delega en easy-rsa). 21 tests verdes.
-3. **WireGuard**: adaptador (peers, `wg show`, generar config, habilitar/quitar).
-4. **Historial + auditoría + UI pulida**.
+3. **[HECHO] WireGuard**: adaptador (peers, `wg show`, config, alta/baja, QR) +
+   config del servidor editable; selector OpenVPN/WireGuard en el panel.
+4. **[EN CURSO] Extras**: entrega de config (descargar/guardar/correo); **multiusuario
+   + roles** (admin/operador/visor) con permisos exigidos en el backend; **instalación**
+   de servicios (paquetes multi-distro + llave en mano con angristan pineado/verificado);
+   navegación por páginas. Pendiente: **historial/auditoría persistida** y UI pulida.
 5. **Despliegue interno** (cuando José lo diga): apuntar al servidor real con
    privilegios acotados, detrás del proxy interno.
 

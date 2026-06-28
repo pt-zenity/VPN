@@ -87,9 +87,44 @@ En OpenVPN puedes **Desconectar** una sesión concreta.
 Las últimas líneas del registro del servidor, con los errores resaltados. Pulsa
 **«Actualizar»** para refrescar.
 
+## 9. Cambiar entre OpenVPN y WireGuard
+
+Si gestionas los dos, usa el **selector** de la barra lateral. El panel cambia los datos,
+el logo y el color de marca. En WireGuard, cada dispositivo tiene además un **Código QR**
+para escanear desde la app del móvil.
+
+## 10. Usuarios y permisos (solo administradores)
+
+En la página **Usuarios** (solo visible para administradores) gestionas quién entra al
+panel y con qué permisos. Hay tres roles:
+
+- **Administrador**: todo, incluida la gestión de usuarios, la edición de la
+  configuración del servidor y la instalación de servicios.
+- **Operador**: gestiona dispositivos (alta/baja/renovar/entregar config) y controla el
+  servicio, pero no edita la configuración del servidor ni gestiona usuarios.
+- **Solo lectura**: únicamente consulta; no puede hacer cambios.
+
+Acciones: **Añadir usuario** (usuario + contraseña de 8+ caracteres + rol), **Cambiar
+rol**, **Cambiar contraseña** y **Borrar**. No puedes borrarte a ti mismo ni dejar el
+sistema sin ningún administrador. Cada usuario ve solo las acciones que su rol permite.
+
+## 11. Sistema e instalación de servicios
+
+La página **Sistema** muestra la **distribución** detectada, su **gestor de paquetes** y
+qué servicios VPN están **instalados**. Un administrador puede instalar los que falten:
+
+- **Instalar paquetes**: instala OpenVPN/WireGuard con el gestor de la distro (apt, dnf…).
+- **Instalación completa**: instalación «llave en mano» (configura el servidor entero)
+  usando los scripts de [angristan](https://github.com/angristan/openvpn-install), que se
+  **descargan de una versión fijada y se verifican por SHA-256** antes de ejecutarse.
+
+> La instalación real requiere que el administrador la haya habilitado
+> (`VPNM_ALLOW_INSTALL=true`) y que el panel corra como root. En el modo de prueba solo
+> se **simula** (muestra el plan). Ver el [Manual de instalación](INSTALACION.md).
+
 ---
 
-## 9. Preguntas frecuentes
+## 12. Preguntas frecuentes
 
 - **¿Cómo doy acceso a una persona nueva?** Sección Dispositivos → «Añadir dispositivo»
   → escribe el nombre → «Crear acceso» → entrégale su config (descargar / correo / QR).
