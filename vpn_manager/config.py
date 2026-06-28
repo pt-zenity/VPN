@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # OpenVPN
     openvpn_pki_index: Path = SANDBOX / "openvpn" / "pki" / "index.txt"
     openvpn_status_file: Path = SANDBOX / "openvpn" / "openvpn-status.log"
+    openvpn_log_file: Path = SANDBOX / "openvpn" / "openvpn.log"
     openvpn_service: str = "openvpn-server@server"
 
     # WireGuard (se completará en su fase)

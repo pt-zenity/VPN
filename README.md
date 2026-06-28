@@ -7,13 +7,17 @@ dar de alta personas, descargar su configuración y retirarles el acceso.
 
 ## Características
 
+- **Resumen**: totales de accesos activos, conectados y caducados/retirados.
 - **Personas con acceso**: lista de certificados/clientes con su estado en lenguaje
   llano (*acceso activo*, *retirado*, *caducado*) y fecha de caducidad.
 - **Alta de acceso**: crea un nuevo cliente y genera su fichero de configuración.
 - **Descarga de configuración** (`.ovpn`) de cada acceso activo.
 - **Retirar acceso**: revoca el certificado y regenera la CRL.
+- **Control del servicio**: arrancar, parar, reiniciar y recargar el servidor.
+- **Registros**: últimas líneas del log del servidor VPN.
 - **Conexiones en tiempo real**: quién está conectado, desde cuándo y su tráfico.
-- **Estado del servicio** del servidor VPN.
+- **Interfaz de escritorio** (no móvil) con barra lateral, y **marca por protocolo**:
+  emblema y color según la VPN activa (OpenVPN en naranja, WireGuard en granate).
 
 ## Seguridad
 
@@ -67,6 +71,8 @@ ruff check .
 | `POST` | `/api/openvpn/clients` | Alta de cliente `{"name": "..."}` |
 | `POST` | `/api/openvpn/clients/{name}/revoke` | Retira el acceso |
 | `GET`  | `/api/openvpn/clients/{name}/config` | Descarga el `.ovpn` |
+| `GET`  | `/api/openvpn/logs` | Últimas líneas del registro (`?lines=80`) |
+| `POST` | `/api/openvpn/service/{action}` | `start`/`stop`/`restart`/`reload` |
 
 ## Configuración
 

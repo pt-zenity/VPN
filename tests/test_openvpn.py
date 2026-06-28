@@ -15,6 +15,7 @@ def _backend() -> OpenVpnBackend:
         status_file=settings.openvpn_status_file,
         service=settings.openvpn_service,
         sandbox=True,
+        log_file=settings.openvpn_log_file,
     )
 
 
@@ -26,9 +27,11 @@ def tmp_backend(tmp_path) -> OpenVpnBackend:
     shutil.copy(settings.openvpn_pki_index, pki / "index.txt")
     status = tmp_path / "openvpn-status.log"
     shutil.copy(settings.openvpn_status_file, status)
+    log = tmp_path / "openvpn.log"
+    shutil.copy(settings.openvpn_log_file, log)
     return OpenVpnBackend(
         pki_index=pki / "index.txt", status_file=status,
-        service="x", sandbox=True,
+        service="x", sandbox=True, log_file=log,
     )
 
 
@@ -156,6 +159,26 @@ class TestOpenVpnWrite:
             tmp_backend.client_config("dave-expired")
 
 
+class TestServiceAndLogs:
+    def test_acciones_validas_en_sandbox(self, tmp_backend):
+        for action in ("start", "restart", "reload"):
+            assert tmp_backend.service_action(action).active is True
+        assert tmp_backend.service_action("stop").active is False
+
+    def test_accion_invalida_falla(self, tmp_backend):
+        with pytest.raises(InvalidName):
+            tmp_backend.service_action("rm -rf")
+
+    def test_logs_devuelve_lineas(self, tmp_backend):
+        out = tmp_backend.logs(5)
+        assert isinstance(out, list)
+        assert 1 <= len(out) <= 5
+        assert any("OpenVPN" in line or "alice" in line for line in tmp_backend.logs(100))
+
+    def test_logs_acota_el_numero(self, tmp_backend):
+        assert len(tmp_backend.logs(99999)) <= 1000
+
+
 class TestWriteApi:
     @pytest.fixture(autouse=True)
     def _isolate(self, tmp_path, monkeypatch):
@@ -191,6 +214,19 @@ class TestWriteApi:
         assert self.client.post("/api/openvpn/clients", json={"name": "a b"}).status_code == 422
         assert self.client.post("/api/openvpn/clients/server/revoke").status_code == 403
         assert self.client.post("/api/openvpn/clients/fantasma/revoke").status_code == 404
+
+    def test_control_servicio_y_logs(self):
+        assert self.client.post("/api/openvpn/service/restart").json()["active"] is True
+        assert self.client.post("/api/openvpn/service/stop").json()["active"] is False
+        assert self.client.post("/api/openvpn/service/bogus").status_code == 422
+        r = self.client.get("/api/openvpn/logs")
+        assert r.status_code == 200
+        assert isinstance(r.json()["lines"], list)
+
+    def test_servicio_requiere_login(self):
+        c = TestClient(app)
+        assert c.post("/api/openvpn/service/restart").status_code == 401
+        assert c.get("/api/openvpn/logs").status_code == 401
 
 
 class TestAuthModule:

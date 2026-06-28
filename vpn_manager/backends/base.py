@@ -84,3 +84,12 @@ class VpnBackend(ABC):
     def client_config(self, name: str) -> str:
         """Devuelve el fichero de configuración del cliente para descargar."""
         raise NotImplementedError
+
+    # ── Control del servicio y registros ───────────────────────────────────
+    def service_action(self, action: str) -> ServiceStatus:
+        """Arranca, para, reinicia o recarga el servidor VPN."""
+        raise NotImplementedError
+
+    def logs(self, lines: int = 50) -> list[str]:
+        """Últimas líneas del registro del servidor VPN."""
+        raise NotImplementedError

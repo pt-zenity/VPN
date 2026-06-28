@@ -1,0 +1,19 @@
+2026-06-22 08:01:12 OpenVPN 2.6.9 x86_64-pc-linux-gnu [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL]
+2026-06-22 08:01:12 Initializing OpenSSL provider(s)
+2026-06-22 08:01:12 TUN/TAP device tun0 opened
+2026-06-22 08:01:12 /sbin/ip link set dev tun0 up mtu 1500
+2026-06-22 08:01:12 /sbin/ip addr add dev tun0 10.8.0.1/24
+2026-06-22 08:01:12 UDPv4 link local (bound): [AF_INET][undef]:1194
+2026-06-22 08:01:12 Initialization Sequence Completed
+2026-06-22 08:14:33 alice-laptop/203.0.113.10:51000 peer info: IV_VER=2.6.9
+2026-06-22 08:14:33 alice-laptop/203.0.113.10:51000 VERIFY OK: depth=0, CN=alice-laptop
+2026-06-22 08:14:33 alice-laptop/203.0.113.10:51000 MULTI: primary virtual IP: 10.8.0.2
+2026-06-22 08:14:33 alice-laptop/203.0.113.10:51000 Connection established
+2026-06-22 08:39:07 bob-phone/198.51.100.22:44000 VERIFY OK: depth=0, CN=bob-phone
+2026-06-22 08:39:07 bob-phone/198.51.100.22:44000 MULTI: primary virtual IP: 10.8.0.3
+2026-06-22 08:39:07 bob-phone/198.51.100.22:44000 Connection established
+2026-06-22 09:02:55 carol-old/192.0.2.5:33000 VERIFY ERROR: depth=0, error=certificate revoked: CN=carol-old
+2026-06-22 09:02:55 carol-old/192.0.2.5:33000 TLS_ERROR: BIO read tls_read_plaintext error
+2026-06-22 09:02:55 carol-old/192.0.2.5:33000 Connection reset, restarting
+2026-06-22 10:15:40 alice-laptop/203.0.113.10:51000 SENT CONTROL: 'AUTH_PENDING,...'
+2026-06-22 10:15:40 alice-laptop/203.0.113.10:51000 Data Channel: cipher 'AES-256-GCM'

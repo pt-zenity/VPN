@@ -31,6 +31,7 @@ _INDEX_STATUS = {"V": "valid", "R": "revoked", "E": "expired"}
 # Evita inyección en comandos, traversal de rutas y CN con caracteres raros.
 _NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 _CLIENT_VALID_YEARS = 3
+_SERVICE_ACTIONS = ("start", "stop", "restart", "reload")
 
 
 def _parse_asn1_time(raw: str) -> datetime | None:
@@ -53,12 +54,14 @@ class OpenVpnBackend(VpnBackend):
         service: str,
         sandbox: bool,
         server_cn: str = "server",
+        log_file: Path | None = None,
     ) -> None:
         self.pki_index = pki_index
         self.status_file = status_file
         self.service = service
         self.sandbox = sandbox
         self.server_cn = server_cn
+        self.log_file = log_file
         # easy-rsa vive en el directorio padre de la PKI; los .ovpn generados se
         # guardan junto a la PKI (sandbox/openvpn/clients en modo sandbox).
         self.easyrsa_dir = pki_index.parent.parent
@@ -272,6 +275,45 @@ class OpenVpnBackend(VpnBackend):
         if cfg.exists():
             return cfg.read_text(encoding="utf-8")
         return self._render_ovpn(name)
+
+    # ── Control del servicio ───────────────────────────────────────────────
+    def service_action(self, action: str) -> ServiceStatus:
+        if action not in _SERVICE_ACTIONS:
+            raise InvalidName(
+                f"Acción no permitida. Usa una de: {', '.join(_SERVICE_ACTIONS)}."
+            )
+        if self.sandbox:
+            active = action != "stop"
+            return ServiceStatus(
+                backend=self.name, active=active, detail=f"sandbox: «{action}» simulado"
+            )
+        try:
+            subprocess.run(
+                ["systemctl", action, self.service],
+                capture_output=True, text=True, timeout=30, check=True,
+            )
+        except subprocess.CalledProcessError as e:  # pragma: no cover
+            raise VpnError(f"systemctl {action} falló: {e.stderr.strip() or e}") from e
+        except (OSError, subprocess.TimeoutExpired) as e:  # pragma: no cover
+            raise VpnError(f"No se pudo ejecutar systemctl: {e}") from e
+        return self.status()
+
+    # ── Registros ──────────────────────────────────────────────────────────
+    def logs(self, lines: int = 50) -> list[str]:
+        lines = max(1, min(lines, 1000))
+        if self.log_file and self.log_file.exists():
+            content = self.log_file.read_text(encoding="utf-8", errors="replace").splitlines()
+            return content[-lines:]
+        if self.sandbox:
+            return []
+        try:  # pragma: no cover - depende del entorno real
+            out = subprocess.run(
+                ["journalctl", "-u", self.service, "-n", str(lines), "--no-pager"],
+                capture_output=True, text=True, timeout=10,
+            )
+            return out.stdout.splitlines()
+        except Exception as e:  # noqa: BLE001  # pragma: no cover
+            return [f"(no se pudieron leer los registros: {e})"]
 
     # ── Helpers de escritura ───────────────────────────────────────────────
     def _save_config(self, name: str, content: str) -> None:

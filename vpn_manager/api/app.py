@@ -58,6 +58,7 @@ def _openvpn() -> OpenVpnBackend:
         status_file=settings.openvpn_status_file,
         service=settings.openvpn_service,
         sandbox=settings.sandbox,
+        log_file=settings.openvpn_log_file,
     )
 
 
@@ -178,6 +179,23 @@ def openvpn_clients() -> list[VpnClient]:
 )
 def openvpn_connections() -> list[VpnConnection]:
     return _openvpn().connections()
+
+
+@app.get("/api/openvpn/logs", dependencies=_PROTECTED)
+def openvpn_logs(lines: int = 80) -> dict:
+    return {"lines": _openvpn().logs(lines)}
+
+
+@app.post(
+    "/api/openvpn/service/{action}", response_model=ServiceStatus, dependencies=_PROTECTED
+)
+def openvpn_service_action(action: str, user: str = Depends(require_user)) -> ServiceStatus:
+    try:
+        status = _openvpn().service_action(action)
+    except VpnError as e:
+        raise _http(e) from e
+    log.info("acción de servicio «%s» por %s -> activo=%s", action, user, status.active)
+    return status
 
 
 # ── Escritura (protegida) ────────────────────────────────────────────────────
