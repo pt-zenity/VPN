@@ -8,6 +8,7 @@ y /health.
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
@@ -159,9 +160,53 @@ def _deliver_email(backend, name: str, ext: str, email: str, user: str) -> dict:
 app = FastAPI(title="VPN Manager", version="0.3.0")
 
 
+class _Metrics:
+    """Contadores en proceso, expuestos en /metrics (texto Prometheus, sin deps)."""
+
+    def __init__(self) -> None:
+        self._start = time.time()
+        self._requests: dict[tuple[str, str], int] = {}
+        self._duration_ms = 0.0
+
+    def observe(self, method: str, status: int, ms: float) -> None:
+        self._requests[(method, f"{status // 100}xx")] = (
+            self._requests.get((method, f"{status // 100}xx"), 0) + 1
+        )
+        self._duration_ms += ms
+
+    def render(self) -> str:
+        out = [
+            "# HELP vpnmanager_up 1 si el servicio responde",
+            "# TYPE vpnmanager_up gauge",
+            "vpnmanager_up 1",
+            "# HELP vpnmanager_uptime_seconds Segundos desde el arranque",
+            "# TYPE vpnmanager_uptime_seconds gauge",
+            f"vpnmanager_uptime_seconds {time.time() - self._start:.0f}",
+            "# HELP vpnmanager_http_requests_total Peticiones por método y clase de estado",
+            "# TYPE vpnmanager_http_requests_total counter",
+        ]
+        for (method, status), n in sorted(self._requests.items()):
+            out.append(
+                f'vpnmanager_http_requests_total{{method="{method}",status="{status}"}} {n}'
+            )
+        out += [
+            "# HELP vpnmanager_http_request_duration_ms_sum Suma de latencias (ms)",
+            "# TYPE vpnmanager_http_request_duration_ms_sum counter",
+            f"vpnmanager_http_request_duration_ms_sum {self._duration_ms:.0f}",
+        ]
+        return "\n".join(out) + "\n"
+
+
+METRICS = _Metrics()
+
+
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
+    start = time.monotonic()
     response = await call_next(request)
+    # Métricas: no se contabiliza el propio scrape de /metrics.
+    if request.url.path != "/metrics":
+        METRICS.observe(request.method, response.status_code, (time.monotonic() - start) * 1000)
     for k, v in _SECURITY_HEADERS.items():
         response.headers.setdefault(k, v)
     # HSTS solo detrás de HTTPS (cuando se sirve con cookie segura).
@@ -260,6 +305,13 @@ def logout(request: Request):
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok", "sandbox": settings.sandbox}
+
+
+@app.get("/metrics")
+def metrics() -> PlainTextResponse:
+    """Métricas en formato Prometheus (texto). Ruta pública (sin auth), para
+    que la raspe Prometheus; el panel se sirve en red interna."""
+    return PlainTextResponse(METRICS.render())
 
 
 @app.get("/api/me", dependencies=_PROTECTED)
