@@ -315,6 +315,36 @@ class TestWireGuardApi:
         assert TestClient(app).get("/api/wireguard/clients").status_code == 401
 
 
+class TestDelivery:
+    def test_guardar_dentro_del_base(self, tmp_path):
+        from vpn_manager.delivery import save_to_server
+
+        p = save_to_server("contenido", "alice.ovpn", "subcarpeta", tmp_path)
+        assert p.read_text() == "contenido"
+        assert tmp_path in p.parents
+
+    def test_guardar_fuera_del_base_falla(self, tmp_path):
+        from vpn_manager.delivery import DeliveryError, save_to_server
+
+        with pytest.raises(DeliveryError):
+            save_to_server("x", "a.ovpn", "../../etc", tmp_path)
+
+    def test_email_invalido(self):
+        from vpn_manager.delivery import DeliveryError, validate_email
+
+        with pytest.raises(DeliveryError):
+            validate_email("no-es-un-email")
+
+    def test_email_simulado_en_sandbox(self, tmp_path, monkeypatch):
+        from vpn_manager.delivery import send_email
+
+        monkeypatch.setattr(settings, "export_dir", tmp_path)
+        monkeypatch.setattr(settings, "smtp_host", "")
+        res = send_email("config", "ana.conf", "ana@empresa.com", settings, sandbox=True)
+        assert res["simulated"] is True and res["to"] == "ana@empresa.com"
+        assert list((tmp_path / "outbox").glob("*.eml"))
+
+
 class TestWriteApi:
     @pytest.fixture(autouse=True)
     def _isolate(self, tmp_path, monkeypatch):
@@ -325,6 +355,7 @@ class TestWriteApi:
         shutil.copy(settings.openvpn_status_file, status)
         monkeypatch.setattr(settings, "openvpn_pki_index", pki / "index.txt")
         monkeypatch.setattr(settings, "openvpn_status_file", status)
+        monkeypatch.setattr(settings, "export_dir", tmp_path / "exports")
         self.client = TestClient(app)
         _login(self.client)
 
@@ -380,6 +411,19 @@ class TestWriteApi:
         assert d["port"] == "1194"
         assert d["public_endpoint"]
         assert len(d["directives"]) > 10
+
+    def test_guardar_y_enviar_config_por_api(self):
+        r = self.client.post("/api/openvpn/clients/alice-laptop/save", json={"path": "equipo-ana"})
+        assert r.status_code == 200 and r.json()["saved"] is True
+        # ruta fuera del directorio permitido → 422
+        r = self.client.post("/api/openvpn/clients/alice-laptop/save", json={"path": "/etc"})
+        assert r.status_code == 422
+        # email simulado en sandbox
+        r = self.client.post("/api/openvpn/clients/alice-laptop/email", json={"email": "ana@empresa.com"})
+        assert r.status_code == 200 and r.json()["simulated"] is True
+        # email inválido → 422
+        r = self.client.post("/api/openvpn/clients/alice-laptop/email", json={"email": "malo"})
+        assert r.status_code == 422
 
 
 class TestAuthModule:

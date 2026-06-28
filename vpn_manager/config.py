@@ -50,5 +50,17 @@ class Settings(BaseSettings):
     session_max_age: int = 8 * 3600  # 8 horas
     cookie_secure: bool = False  # poner True detrás de HTTPS
 
+    # ── Entrega de configuraciones (guardar en ruta / enviar por correo) ────
+    # Directorio base PERMITIDO para guardar configs en el servidor (anti-traversal).
+    export_dir: Path = SANDBOX / "exports"
+    # SMTP para enviar la config por correo. Si smtp_host está vacío, en sandbox se
+    # simula (se guarda un .eml en export_dir/outbox); en producción da error.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "vpn-manager@localhost"
+    smtp_starttls: bool = True
+
 
 settings = Settings()

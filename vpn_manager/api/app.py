@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import auth
+from .. import auth, delivery
 from ..backends.base import (
     AlreadyExists,
     Forbidden,
@@ -96,6 +96,40 @@ def require_user(request: Request) -> str:
 
 class CreateClient(BaseModel):
     name: str = Field(min_length=1, max_length=64)
+
+
+class SavePath(BaseModel):
+    path: str = Field(min_length=1, max_length=512)
+
+
+class SendEmail(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+
+def _deliver_save(backend, name: str, ext: str, dest: str, user: str) -> dict:
+    try:
+        content = backend.client_config(name)
+        path = delivery.save_to_server(
+            content, f"{name}.{ext}", dest, settings.export_dir
+        )
+    except VpnError as e:
+        raise _http(e) from e
+    except delivery.DeliveryError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    log.info("config de «%s» guardada en %s por %s", name, path, user)
+    return {"saved": True, "path": str(path)}
+
+
+def _deliver_email(backend, name: str, ext: str, email: str, user: str) -> dict:
+    try:
+        content = backend.client_config(name)
+        result = delivery.send_email(content, f"{name}.{ext}", email, settings, settings.sandbox)
+    except VpnError as e:
+        raise _http(e) from e
+    except delivery.DeliveryError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    log.info("config de «%s» enviada por correo a %s por %s", name, result["to"], user)
+    return result
 
 
 app = FastAPI(title="VPN Manager", version="0.3.0")
@@ -296,6 +330,16 @@ def wg_qr(name: str) -> Response:
     return Response(content=svg, media_type="image/svg+xml")
 
 
+@app.post("/api/wireguard/clients/{name}/save", dependencies=_PROTECTED)
+def wg_save(name: str, body: SavePath, user: str = Depends(require_user)) -> dict:
+    return _deliver_save(_wireguard(), name, "conf", body.path, user)
+
+
+@app.post("/api/wireguard/clients/{name}/email", dependencies=_PROTECTED)
+def wg_email(name: str, body: SendEmail, user: str = Depends(require_user)) -> dict:
+    return _deliver_email(_wireguard(), name, "conf", body.email, user)
+
+
 @app.post(
     "/api/wireguard/service/{action}", response_model=ServiceStatus, dependencies=_PROTECTED
 )
@@ -370,6 +414,16 @@ def openvpn_config(name: str) -> Response:
     return PlainTextResponse(
         text, headers={"Content-Disposition": f'attachment; filename="{name}.ovpn"'}
     )
+
+
+@app.post("/api/openvpn/clients/{name}/save", dependencies=_PROTECTED)
+def openvpn_save(name: str, body: SavePath, user: str = Depends(require_user)) -> dict:
+    return _deliver_save(_openvpn(), name, "ovpn", body.path, user)
+
+
+@app.post("/api/openvpn/clients/{name}/email", dependencies=_PROTECTED)
+def openvpn_email(name: str, body: SendEmail, user: str = Depends(require_user)) -> dict:
+    return _deliver_email(_openvpn(), name, "ovpn", body.email, user)
 
 
 # ── Utilidades ───────────────────────────────────────────────────────────────

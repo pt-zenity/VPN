@@ -33,3 +33,6 @@ sandbox/wireguard/clients/
 
 # Copia de runtime del servidor de demo (no versionar)
 sandbox/runtime/
+
+# Configs exportadas / outbox de correo (sandbox)
+sandbox/exports/

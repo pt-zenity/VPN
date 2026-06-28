@@ -77,6 +77,9 @@ ruff check .
 | `POST` | `/api/openvpn/clients/{name}/revoke` | Retira el acceso |
 | `POST` | `/api/openvpn/clients/{name}/renew` | Renueva (reemite) el certificado |
 | `GET`  | `/api/openvpn/clients/{name}/config` | Descarga el `.ovpn` |
+| `POST` | `/api/openvpn/clients/{name}/save` | Guarda la config en una ruta del servidor |
+| `POST` | `/api/openvpn/clients/{name}/email` | Envía la config por correo |
+| `*`    | `/api/wireguard/*` | Equivalente para WireGuard (+ `/clients/{name}/qr`) |
 | `POST` | `/api/openvpn/connections/{name}/disconnect` | Corta la conexión activa |
 | `GET`  | `/api/openvpn/server` | Configuración del servidor (rangos, cifrados, DNS…) |
 | `GET`  | `/api/openvpn/logs` | Últimas líneas del registro (`?lines=80`) |
