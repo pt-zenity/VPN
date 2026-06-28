@@ -234,8 +234,7 @@ class WireGuardBackend(VpnBackend):
         if self._find(name) is not None:
             raise AlreadyExists(f"Ya existe un dispositivo con el nombre «{name}».")
 
-        priv = _genkey()
-        pub = _genkey()  # en real: wg pubkey a partir de priv
+        priv, pub = self._genkeypair()
         ip = self._next_ip()
         if not self.sandbox:  # pragma: no cover - requiere wg en el host
             self._wg("set", self.interface, "peer", pub, "allowed-ips", f"{ip}/32")
@@ -397,7 +396,7 @@ class WireGuardBackend(VpnBackend):
             f"Address = {ip}/32\n"
             f"DNS = {self.dns}\n\n"
             "[Peer]\n"
-            "PublicKey = (clave-publica-del-servidor)\n"
+            f"PublicKey = {self._server_pubkey()}\n"
             f"Endpoint = {self.public_endpoint}:{port}\n"
             "AllowedIPs = 0.0.0.0/0, ::/0\n"
             "PersistentKeepalive = 25\n"
@@ -435,3 +434,39 @@ class WireGuardBackend(VpnBackend):
             raise VpnError(f"wg falló: {e.stderr.strip() or e}") from e
         except (OSError, subprocess.TimeoutExpired) as e:
             raise VpnError(f"No se pudo ejecutar wg: {e}") from e
+
+    def _wg_out(self, *args: str, stdin: str | None = None) -> str:  # pragma: no cover - requiere wg real
+        """Ejecuta `wg` y devuelve su stdout (para genkey/pubkey/show)."""
+        try:
+            res = subprocess.run(
+                ["wg", *args], input=stdin, capture_output=True, text=True, timeout=30, check=True
+            )
+            return res.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            raise VpnError(f"wg falló: {e.stderr.strip() or e}") from e
+        except (OSError, subprocess.TimeoutExpired) as e:
+            raise VpnError(f"No se pudo ejecutar wg: {e}") from e
+
+    def _genkeypair(self) -> tuple[str, str]:
+        """Par (privada, pública) del cliente. En modo real deriva la pública de la
+        privada con `wg genkey`/`wg pubkey` (obligatorio: si no coinciden, el
+        handshake falla). En sandbox usa claves ficticias (no material real)."""
+        if self.sandbox:
+            return _genkey(), _genkey()
+        priv = self._wg_out("genkey")
+        return priv, self._wg_out("pubkey", stdin=priv)
+
+    def _server_pubkey(self) -> str:  # pragma: no cover - requiere wg real
+        """Clave pública del servidor para el config del cliente. En real: de
+        `wg show <iface> public-key`, con respaldo derivándola del `PrivateKey` del
+        wg0.conf. En sandbox: placeholder (comportamiento previo, no rompe tests)."""
+        if self.sandbox:
+            return "(clave-publica-del-servidor)"
+        try:
+            pub = self._wg_out("show", self.interface, "public-key")
+            if pub:
+                return pub
+        except VpnError:
+            pass
+        priv = self._parse_interface().get("PrivateKey")
+        return self._wg_out("pubkey", stdin=priv) if priv else "(clave-publica-del-servidor)"
