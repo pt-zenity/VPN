@@ -409,15 +409,34 @@ async function loadSystem(){
     ];
     document.getElementById('sys-services').innerHTML = svc.map(x=>{
       const inst = x.k==='openvpn' ? (s.installed.openvpn) : (s.installed.wireguard);
-      const canInstall = can('system:install') && s.supported && !inst;
-      const btn = inst ? '' : (canInstall
-        ? `<button class="btn primary" onclick="installService('${x.k}')">Instalar</button>`
-        : (can('system:install') ? '<span class="sub">distro no compatible</span>' : ''));
+      const canInstall = can('system:install') && !inst;
+      let btn = '';
+      if(canInstall){
+        const pkg = s.supported ? `<button class="btn" onclick="installService('${x.k}')">Instalar paquetes</button>` : '<span class="sub">distro no compatible</span>';
+        btn = `${pkg}<button class="btn primary" onclick="bootstrapService('${x.k}')">Instalación completa</button>`;
+      }
       return `<div class="row"><div><div class="name">${x.label}</div><div class="meta">${x.sub}</div></div>
         <div class="right"><span class="state ${inst?'s-ok':'s-warn'}"><span class="dot ${inst?'ok':'warn'}"></span>${inst?'Instalado':'No instalado'}</span></div>
-        ${btn?`<div style="margin-left:16px">${btn}</div>`:''}</div>`;
+        ${btn?`<div style="margin-left:16px;display:flex;gap:8px">${btn}</div>`:''}</div>`;
     }).join('');
   }catch(e){ document.getElementById('sys-services').innerHTML='<div class="err">No se pudo leer el sistema.</div>'; }
+}
+async function bootstrapService(backend){
+  let plan;
+  try{ plan = await fetch('/api/system/bootstrap/'+backend+'/plan').then(r=>r.json()); }
+  catch(e){ toast('No se pudo obtener el plan.'); return; }
+  if(!plan.checksum_configured){
+    alert(`La instalación completa de ${backend.toUpperCase()} no está configurada.\n\nFija el origen pineado y su SHA-256 en el .env:\n  VPNM_BOOTSTRAP_${backend.toUpperCase()}_URL (a un commit concreto de ${plan.repo})\n  VPNM_BOOTSTRAP_${backend.toUpperCase()}_SHA256\n\n(cómputo: curl -sL <url> | sha256sum)`);
+    return;
+  }
+  if(!confirm(`Instalación COMPLETA de ${backend.toUpperCase()} con el script de ${plan.repo}.\n\nSe descargará desde:\n${plan.url}\nse verificará su SHA-256 y se ejecutará (configura el servidor entero).\n\n¿Continuar?`)) return;
+  try{
+    const r = await fetch('/api/system/bootstrap/'+backend,{method:'POST'});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok){ toast(d.detail||'No se pudo instalar.'); return; }
+    toast(d.simulated ? 'Sandbox: instalación completa simulada ✓' : 'Servidor instalado y configurado ✓');
+    loadSystem();
+  }catch(e){ toast('No se pudo conectar con el servidor.'); }
 }
 async function installService(backend){
   let plan;

@@ -56,6 +56,15 @@ class Settings(BaseSettings):
     # del rol admin, en producción hay que activarlo aquí y ejecutarse como root.
     allow_install: bool = False
 
+    # ── Instalación «llave en mano» (scripts de angristan, pineados + verificados) ──
+    # Para activarla: fija un COMMIT concreto en la URL y su SHA-256 (cómputo:
+    # `curl -sL <url> | sha256sum`). Sin checksum NO se ejecuta (fail-closed).
+    bootstrap_dir: Path = SANDBOX / "data" / "bootstrap"
+    bootstrap_openvpn_url: str = ""
+    bootstrap_openvpn_sha256: str = ""
+    bootstrap_wireguard_url: str = ""
+    bootstrap_wireguard_sha256: str = ""
+
     # ── Entrega de configuraciones (guardar en ruta / enviar por correo) ────
     # Directorio base PERMITIDO para guardar configs en el servidor (anti-traversal).
     export_dir: Path = SANDBOX / "exports"

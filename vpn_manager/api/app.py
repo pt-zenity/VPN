@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import auth, delivery, installer, users
+from .. import auth, bootstrap, delivery, installer, users
 from ..backends.base import (
     AlreadyExists,
     Forbidden,
@@ -370,6 +370,25 @@ def system_install(backend: str, admin: str = Depends(require_perm("system:insta
     except installer.InstallError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
     log.info("instalación de «%s» solicitada por %s (simulada=%s)", backend, admin,
+             result.get("simulated"))
+    return result
+
+
+@app.get("/api/system/bootstrap/{backend}/plan", dependencies=_PROTECTED)
+def system_bootstrap_plan(backend: str) -> dict:
+    try:
+        return bootstrap.plan(backend, settings)
+    except bootstrap.BootstrapError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+
+@app.post("/api/system/bootstrap/{backend}")
+def system_bootstrap(backend: str, admin: str = Depends(require_perm("system:install"))) -> dict:
+    try:
+        result = bootstrap.run(backend, settings, settings.sandbox)
+    except bootstrap.BootstrapError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    log.info("instalación llave en mano de «%s» por %s (simulada=%s)", backend, admin,
              result.get("simulated"))
     return result
 

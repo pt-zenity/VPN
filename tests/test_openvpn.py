@@ -493,6 +493,54 @@ class TestInstaller:
         assert set(info["installed"]) == {"openvpn", "easyrsa", "wireguard"}
 
 
+class TestBootstrap:
+    def _settings(self, tmp_path, url="", sha="", allow=False, sandbox=True):
+        import types
+        return types.SimpleNamespace(
+            bootstrap_openvpn_url=url, bootstrap_openvpn_sha256=sha,
+            bootstrap_wireguard_url="", bootstrap_wireguard_sha256="",
+            bootstrap_dir=tmp_path / "bootstrap", allow_install=allow,
+            openvpn_public_endpoint="vpn.miempresa.com",
+        )
+
+    def _served(self, tmp_path):
+        import hashlib
+        script = tmp_path / "install.sh"
+        script.write_bytes(b"#!/bin/bash\necho hola\n")
+        sha = hashlib.sha256(script.read_bytes()).hexdigest()
+        return "file://" + str(script), sha
+
+    def test_verifica_checksum_ok(self, tmp_path):
+        from vpn_manager.bootstrap import fetch_and_verify
+        url, sha = self._served(tmp_path)
+        dest = fetch_and_verify(url, sha, tmp_path / "out.sh")
+        assert dest.read_bytes().startswith(b"#!/bin/bash")
+
+    def test_checksum_incorrecto_falla(self, tmp_path):
+        from vpn_manager.bootstrap import BootstrapError, fetch_and_verify
+        url, _ = self._served(tmp_path)
+        with pytest.raises(BootstrapError):
+            fetch_and_verify(url, "0" * 64, tmp_path / "out.sh")
+
+    def test_sin_checksum_no_ejecuta(self, tmp_path):
+        from vpn_manager.bootstrap import BootstrapError, fetch_and_verify
+        url, _ = self._served(tmp_path)
+        with pytest.raises(BootstrapError):
+            fetch_and_verify(url, "", tmp_path / "out.sh")
+
+    def test_run_sandbox_simula_con_origen(self, tmp_path):
+        from vpn_manager.bootstrap import run
+        url, sha = self._served(tmp_path)
+        r = run("openvpn", self._settings(tmp_path, url, sha), sandbox=True)
+        assert r["simulated"] is True and r["plan"]["checksum_configured"] is True
+        assert r["plan"]["repo"] == "angristan/openvpn-install"
+
+    def test_run_sin_configurar_falla(self, tmp_path):
+        from vpn_manager.bootstrap import BootstrapError, run
+        with pytest.raises(BootstrapError):
+            run("openvpn", self._settings(tmp_path), sandbox=True)
+
+
 class TestDelivery:
     def test_guardar_dentro_del_base(self, tmp_path):
         from vpn_manager.delivery import save_to_server
