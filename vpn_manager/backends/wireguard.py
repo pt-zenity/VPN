@@ -183,12 +183,13 @@ class WireGuardBackend(VpnBackend):
 
     # ── Conexiones activas (wg show) ───────────────────────────────────────
     def connections(self) -> list[VpnConnection]:
-        if not (self.show_file and self.show_file.exists()):
+        text = self._wg_show_text()
+        if text is None:
             return []
         key_to_name = {p["public_key"]: p["name"] for p in self._parse_peers()}
         conns: list[VpnConnection] = []
         cur: dict[str, str] | None = None
-        for raw in self.show_file.read_text(encoding="utf-8").splitlines():
+        for raw in text.splitlines():
             s = raw.strip()
             if s.startswith("peer:"):
                 cur = {"key": s.split(":", 1)[1].strip()}
@@ -206,6 +207,20 @@ class WireGuardBackend(VpnBackend):
         if cur is not None:
             self._emit_conn(cur, key_to_name, conns)
         return conns
+
+    def _wg_show_text(self) -> str | None:
+        """Salida de `wg show <iface>` para parsear conexiones. En modo REAL la
+        ejecuta EN VIVO (el estado no vive en ningún fichero); en sandbox lee el
+        fixture `show_file`. Sin esto, «Conexiones en tiempo real» no mostraría
+        nada con WireGuard real."""
+        if not self.sandbox:
+            try:
+                return self._wg_out("show", self.interface)
+            except VpnError:
+                return None
+        if self.show_file and self.show_file.exists():
+            return self.show_file.read_text(encoding="utf-8")
+        return None
 
     @staticmethod
     def _emit_conn(cur, key_to_name, conns) -> None:

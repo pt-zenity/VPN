@@ -66,3 +66,28 @@ def test_sandbox_mode_unchanged(tmp_path):
     priv, pub = be._genkeypair()
     assert priv != pub  # dos claves ficticias, comportamiento previo intacto
     assert be._server_pubkey() == "(clave-publica-del-servidor)"
+
+
+def test_real_mode_connections_run_live_wg_show(tmp_path):
+    """En real, «Conexiones en tiempo real» debe ejecutar `wg show <iface>` EN VIVO,
+    no leer un fichero estático (bug: solo funcionaba en sandbox)."""
+    be = _backend(tmp_path, sandbox=False)
+    be.conf.write_text(
+        "[Interface]\nPrivateKey = SRVPRIV\nAddress = 10.9.0.1/24\nListenPort = 51820\n"
+        "\n# ana\n[Peer]\nPublicKey = ANAPUB\nAllowedIPs = 10.9.0.2/32\n",
+        encoding="utf-8",
+    )
+    show = (
+        "interface: wg0\n  public key: SRV\n  listening port: 51820\n\n"
+        "peer: ANAPUB\n  endpoint: 203.0.113.5:1234\n  allowed ips: 10.9.0.2/32\n"
+        "  latest handshake: 10 seconds ago\n  transfer: 1.00 KiB received, 2.00 KiB sent\n"
+    )
+
+    def fake(*args, stdin=None):
+        return show if args == ("show", "wg0") else ""
+
+    with patch.object(be, "_wg_out", side_effect=fake):
+        conns = be.connections()
+    assert len(conns) == 1
+    assert conns[0].name == "ana"
+    assert conns[0].bytes_received > 0 and conns[0].bytes_sent > 0
