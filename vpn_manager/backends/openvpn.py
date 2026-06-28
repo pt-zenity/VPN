@@ -15,9 +15,11 @@ from pathlib import Path
 
 from .base import (
     AlreadyExists,
+    ConfigDirective,
     Forbidden,
     InvalidName,
     NotFound,
+    ServerInfo,
     ServiceStatus,
     VpnBackend,
     VpnClient,
@@ -55,6 +57,8 @@ class OpenVpnBackend(VpnBackend):
         sandbox: bool,
         server_cn: str = "server",
         log_file: Path | None = None,
+        server_conf: Path | None = None,
+        public_endpoint: str = "vpn.ejemplo.local",
     ) -> None:
         self.pki_index = pki_index
         self.status_file = status_file
@@ -62,6 +66,8 @@ class OpenVpnBackend(VpnBackend):
         self.sandbox = sandbox
         self.server_cn = server_cn
         self.log_file = log_file
+        self.server_conf = server_conf
+        self.public_endpoint = public_endpoint
         # easy-rsa vive en el directorio padre de la PKI; los .ovpn generados se
         # guardan junto a la PKI (sandbox/openvpn/clients en modo sandbox).
         self.easyrsa_dir = pki_index.parent.parent
@@ -263,6 +269,36 @@ class OpenVpnBackend(VpnBackend):
             serial=parts[3].strip() or None, expires_at=_parse_asn1_time(parts[1]),
         )
 
+    # ── Escritura: renovación ──────────────────────────────────────────────
+    def renew_client(self, name: str) -> VpnClient:
+        name = self._check_name(name)
+        found = self._find(name)
+        if found is None:
+            raise NotFound(f"No existe ningún acceso llamado «{name}».")
+        idx, parts = found
+        if parts[0] == "R":
+            raise Forbidden("No se puede renovar un acceso retirado; crea uno nuevo.")
+
+        if not self.sandbox:
+            self._easyrsa("renew", name, "nopass", batch=True)
+            found = self._find(name)
+            parts = found[1] if found else parts
+        else:
+            expiry = datetime.now(timezone.utc) + timedelta(days=365 * _CLIENT_VALID_YEARS)
+            parts = parts[:]
+            parts[0] = "V"
+            parts[1] = self._asn1(expiry)
+            parts[2] = ""  # sin fecha de revocación
+            lines = self._index_lines()
+            lines[idx] = "\t".join(parts)
+            self._write_index(lines)
+            self._save_config(name, self._render_ovpn(name))
+
+        return VpnClient(
+            name=name, status="valid",
+            serial=parts[3].strip() or None, expires_at=_parse_asn1_time(parts[1]),
+        )
+
     # ── Descarga de configuración ──────────────────────────────────────────
     def client_config(self, name: str) -> str:
         name = self._check_name(name)
@@ -298,6 +334,66 @@ class OpenVpnBackend(VpnBackend):
             raise VpnError(f"No se pudo ejecutar systemctl: {e}") from e
         return self.status()
 
+    # ── Conexiones: cortar una sesión ──────────────────────────────────────
+    def disconnect(self, name: str) -> None:
+        name = self._check_name(name)
+        active = {c.name for c in self.connections()}
+        if name not in active:
+            raise NotFound(f"«{name}» no tiene ninguna conexión activa.")
+        if not self.sandbox:  # pragma: no cover - requiere interfaz de management
+            raise VpnError(
+                "Desconexión en producción aún no implementada (requiere la "
+                "interfaz de management de OpenVPN)."
+            )
+        # Sandbox: elimina del fichero de estado las filas del cliente (tanto la
+        # de CLIENT LIST como la de ROUTING TABLE).
+        if self.status_file.exists():
+            kept = [
+                ln for ln in self.status_file.read_text(encoding="utf-8").splitlines()
+                if name not in [f.strip() for f in ln.split(",")]
+            ]
+            self.status_file.write_text("\n".join(kept) + "\n", encoding="utf-8")
+
+    # ── Configuración del servidor ─────────────────────────────────────────
+    def server_info(self) -> ServerInfo:
+        info = ServerInfo(backend=self.name, public_endpoint=self.public_endpoint)
+        if not (self.server_conf and self.server_conf.exists()):
+            return info
+
+        directives: dict[str, str] = {}
+        pushes: list[str] = []
+        for raw in self.server_conf.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or line.startswith(";"):
+                continue
+            key, _, value = line.partition(" ")
+            key = key.strip()
+            value = value.strip()
+            # Todas las directivas, en orden, para la vista completa.
+            info.directives.append(ConfigDirective(key=key, value=value))
+            directives[key] = value
+            if key == "push":
+                pushes.append(value.strip('"'))
+
+        info.port = directives.get("port")
+        info.proto = directives.get("proto")
+        info.device = directives.get("dev")
+        info.subnet = directives.get("server")
+        info.cipher = directives.get("data-ciphers") or directives.get("cipher")
+        info.auth = directives.get("auth")
+        info.tls_version = directives.get("tls-version-min")
+        info.max_clients = directives.get("max-clients")
+        info.crl_enabled = "crl-verify" in directives
+
+        # DNS y rutas empujadas a los clientes (directivas `push`).
+        for p in pushes:
+            parts = p.split()
+            if len(parts) >= 2 and parts[0] == "dhcp-option" and parts[1] == "DNS":
+                info.dns_servers.append(parts[2])
+            elif parts and parts[0] == "route":
+                info.routes.append(" ".join(parts[1:]))
+        return info
+
     # ── Registros ──────────────────────────────────────────────────────────
     def logs(self, lines: int = 50) -> list[str]:
         lines = max(1, min(lines, 1000))
@@ -322,20 +418,26 @@ class OpenVpnBackend(VpnBackend):
 
     def _render_ovpn(self, name: str) -> str:
         marca = "# SANDBOX / DEMO — sin material criptográfico real" if self.sandbox else ""
+        info = self.server_info()
+        port = info.port or "1194"
+        proto = (info.proto or "udp").split()[0]
+        dev = info.device or "tun"
+        cipher = (info.cipher or "AES-256-GCM").split(":")[0]
+        auth = info.auth or "SHA256"
         return (
             f"# Configuración OpenVPN para «{name}»\n"
             f"{marca}\n"
             "client\n"
-            "dev tun\n"
-            "proto udp\n"
-            "remote vpn.ejemplo.local 1194\n"
+            f"dev {dev}\n"
+            f"proto {proto}\n"
+            f"remote {self.public_endpoint} {port}\n"
             "resolv-retry infinite\n"
             "nobind\n"
             "persist-key\n"
             "persist-tun\n"
             "remote-cert-tls server\n"
-            "cipher AES-256-GCM\n"
-            "auth SHA256\n"
+            f"data-ciphers {cipher}\n"
+            f"auth {auth}\n"
             "verb 3\n"
             f"# <ca>, <cert> y <key> de «{name}» se insertan aquí en producción.\n"
         )

@@ -21,6 +21,7 @@ from ..backends.base import (
     Forbidden,
     InvalidName,
     NotFound,
+    ServerInfo,
     ServiceStatus,
     VpnClient,
     VpnConnection,
@@ -59,6 +60,8 @@ def _openvpn() -> OpenVpnBackend:
         service=settings.openvpn_service,
         sandbox=settings.sandbox,
         log_file=settings.openvpn_log_file,
+        server_conf=settings.openvpn_server_conf,
+        public_endpoint=settings.openvpn_public_endpoint,
     )
 
 
@@ -181,6 +184,11 @@ def openvpn_connections() -> list[VpnConnection]:
     return _openvpn().connections()
 
 
+@app.get("/api/openvpn/server", response_model=ServerInfo, dependencies=_PROTECTED)
+def openvpn_server() -> ServerInfo:
+    return _openvpn().server_info()
+
+
 @app.get("/api/openvpn/logs", dependencies=_PROTECTED)
 def openvpn_logs(lines: int = 80) -> dict:
     return {"lines": _openvpn().logs(lines)}
@@ -221,6 +229,30 @@ def openvpn_revoke(name: str, user: str = Depends(require_user)) -> VpnClient:
         raise _http(e) from e
     log.info("revocación de acceso «%s» por %s", client.name, user)
     return client
+
+
+@app.post(
+    "/api/openvpn/clients/{name}/renew", response_model=VpnClient, dependencies=_PROTECTED
+)
+def openvpn_renew(name: str, user: str = Depends(require_user)) -> VpnClient:
+    try:
+        client = _openvpn().renew_client(name)
+    except VpnError as e:
+        raise _http(e) from e
+    log.info("renovación de acceso «%s» por %s", client.name, user)
+    return client
+
+
+@app.post(
+    "/api/openvpn/connections/{name}/disconnect", status_code=204, dependencies=_PROTECTED
+)
+def openvpn_disconnect(name: str, user: str = Depends(require_user)) -> Response:
+    try:
+        _openvpn().disconnect(name)
+    except VpnError as e:
+        raise _http(e) from e
+    log.info("desconexión de «%s» por %s", name, user)
+    return Response(status_code=204)
 
 
 @app.get(

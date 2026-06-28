@@ -106,6 +106,18 @@
   .empty{padding:28px 20px;text-align:center;color:var(--faint);font-size:14px}
   .err{padding:28px 20px;text-align:center;color:var(--stop);font-size:14px}
 
+  .srvgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line)}
+  .srv-item{background:#fff;padding:14px 18px;min-width:0}
+  .srv-item .k{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  .srv-item .v{font-size:15px;font-weight:540;margin-top:4px;word-break:break-word}
+  .srv-item .v.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:500}
+  .srv-item .v .tag{display:inline-block;background:var(--accent-soft);color:var(--accent);
+    font-size:12px;font-weight:600;border-radius:6px;padding:1px 7px;margin:1px 4px 1px 0}
+  .allcfg{border-top:1px solid var(--line)}
+  .allcfg summary{padding:13px 18px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--accent);list-style:none}
+  .allcfg summary::-webkit-details-marker{display:none}
+  .allcfg pre{margin:0;padding:2px 18px 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:12.5px;line-height:1.7;color:#3a3f45;white-space:pre-wrap;word-break:break-word}
   .logbox{margin:0;padding:16px 20px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
     font-size:12.5px;line-height:1.7;color:#3a3f45;white-space:pre-wrap;word-break:break-word;
     max-height:360px;overflow:auto}
@@ -131,7 +143,8 @@
     <nav>
       <a href="#resumen">Resumen</a>
       <a href="#servicio">Servicio</a>
-      <a href="#clientes">Personas con acceso <span class="n" id="nav-clients">·</span></a>
+      <a href="#servidor">Configuración</a>
+      <a href="#clientes">Dispositivos <span class="n" id="nav-clients">·</span></a>
       <a href="#conexiones">Conexiones <span class="n" id="nav-conns">·</span></a>
       <a href="#registros">Registros</a>
     </nav>
@@ -171,10 +184,15 @@
       </div></div>
     </section>
 
+    <section id="servidor">
+      <div class="sechead"><div><h2>Configuración del servidor</h2><p class="hint">Parámetros con los que está funcionando el servidor OpenVPN.</p></div></div>
+      <div class="panel"><div id="server-info"><div class="empty">Cargando…</div></div></div>
+    </section>
+
     <section id="clientes">
       <div class="sechead">
-        <div><h2>Personas con acceso</h2><p class="hint">Cada persona o dispositivo tiene un certificado. Aquí ves si su acceso está activo, caducado o retirado, y puedes darlo de alta o retirarlo.</p></div>
-        <button class="btn primary" id="add-btn" onclick="toggleForm(true)">Añadir persona</button>
+        <div><h2>Dispositivos con acceso</h2><p class="hint">Cada dispositivo (portátil, móvil, tablet…) tiene un certificado. Aquí ves si su acceso está activo, caducado o retirado, y puedes darlo de alta, renovarlo o retirarlo.</p></div>
+        <button class="btn primary" id="add-btn" onclick="toggleForm(true)">Añadir dispositivo</button>
       </div>
       <div class="panel">
         <div class="addform" id="add-form">
@@ -235,12 +253,14 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 
 async function load(){
   try{
-    const [st, cl, cn] = await Promise.all([
+    const [st, cl, cn, sv] = await Promise.all([
       fetch('/api/openvpn/status').then(r=>r.json()),
       fetch('/api/openvpn/clients').then(r=>r.json()),
       fetch('/api/openvpn/connections').then(r=>r.json()),
+      fetch('/api/openvpn/server').then(r=>r.json()),
     ]);
     renderService(st);
+    renderServer(sv);
     renderClients(cl);
     renderConns(cn);
     renderStats(st, cl, cn);
@@ -266,6 +286,31 @@ function renderService(st){
   tg.classList.toggle('primary', !st.active);
 }
 
+function renderServer(sv){
+  const item=(k,v,mono)=> v ? `<div class="srv-item"><div class="k">${k}</div><div class="v${mono?' mono':''}">${v}</div></div>` : '';
+  const tags=arr=> (arr&&arr.length)? arr.map(x=>`<span class="tag">${esc(x)}</span>`).join('') : '';
+  const ciphers = sv.cipher ? sv.cipher.split(':').map(c=>`<span class="tag">${esc(c)}</span>`).join('') : '';
+  const grid = [
+    item('Endpoint público', sv.public_endpoint?esc(sv.public_endpoint):'', true),
+    item('Puerto', sv.port?esc(sv.port):'', true),
+    item('Protocolo', sv.proto?esc(sv.proto).toUpperCase():''),
+    item('Dispositivo', sv.device?esc(sv.device):'', true),
+    item('Rango de IPs (VPN)', sv.subnet?esc(sv.subnet):'', true),
+    item('Cifrados de datos', ciphers),
+    item('Autenticación (HMAC)', sv.auth?esc(sv.auth):''),
+    item('TLS mínimo', sv.tls_version?esc(sv.tls_version):''),
+    item('Máx. dispositivos', sv.max_clients?esc(sv.max_clients):''),
+    item('DNS para clientes', tags(sv.dns_servers)),
+    item('Rutas empujadas', tags(sv.routes)),
+    item('Lista de revocación (CRL)', sv.crl_enabled?'<span style="color:var(--ok)">Activada</span>':'<span style="color:var(--warn)">Desactivada</span>'),
+  ].filter(Boolean).join('');
+  const all = (sv.directives&&sv.directives.length)
+    ? `<details class="allcfg"><summary>Ver toda la configuración (${sv.directives.length} directivas)</summary>
+       <pre>${sv.directives.map(d=>esc(d.key+(d.value?' '+d.value:''))).join('\n')}</pre></details>` : '';
+  document.getElementById('server-info').innerHTML =
+    (grid? `<div class="srvgrid">${grid}</div>`:'<div class="empty">No se encontró la configuración del servidor.</div>') + all;
+}
+
 function renderStats(st, cl, cn){
   document.getElementById('st-svc').innerHTML = st.active?'Activo':'<small style="color:var(--stop)">Detenido</small>';
   document.getElementById('st-active').textContent = cl.filter(c=>c.status==='valid').length;
@@ -281,20 +326,26 @@ function renderClients(cl){
     const caduca = c.status==='valid'&&c.expires_at ? 'Caduca el '+fmtDate(c.expires_at)
       : (c.status==='expired'&&c.expires_at ? 'Caducó el '+fmtDate(c.expires_at) : '');
     const n=esc(c.name);
-    const actions = c.status==='valid' ? `<div class="actions">
+    let actions='';
+    if(c.status==='valid') actions=`<div class="actions">
         <a class="act" href="/api/openvpn/clients/${encodeURIComponent(c.name)}/config" download>Descargar configuración</a>
-        <button class="act danger" onclick="revokeClient('${n}')">Retirar acceso</button></div>` : '';
+        <button class="act danger" onclick="revokeClient('${n}')">Retirar acceso</button></div>`;
+    else if(c.status==='expired') actions=`<div class="actions">
+        <button class="act" onclick="renewClient('${n}')">Renovar acceso</button></div>`;
     return `<div class="row"><div><div class="name">${n}</div>${caduca?`<div class="meta">${caduca}</div>`:''}${actions}</div>
       <div class="right"><span class="state ${s.cls}"><span class="dot ${s.dot}"></span>${s.label}</span></div></div>`;
   }).join('') : `<div class="empty">Todavía no hay nadie con acceso.</div>`;
 }
 
 function renderConns(cn){
-  document.getElementById('conns').innerHTML = cn.length ? cn.map(c=>`
-    <div class="row"><div><div class="name">${esc(c.name)}</div><div class="meta">Dirección en la red: ${esc(c.virtual_address)||'—'} · ${esc(c.real_address)||'—'}</div></div>
-    <div class="right"><span class="state s-ok"><span class="dot ok"></span>Conectado · ${since(c.connected_since)}</span>
-    <span class="sub">↓ ${fmtBytes(c.bytes_received)}  ·  ↑ ${fmtBytes(c.bytes_sent)}</span></div></div>`).join('')
-    : `<div class="empty">Ahora mismo no hay nadie conectado.</div>`;
+  document.getElementById('conns').innerHTML = cn.length ? cn.map(c=>{
+    const n=esc(c.name);
+    return `<div class="row"><div><div class="name">${n}</div>
+      <div class="meta">Dirección en la red: ${esc(c.virtual_address)||'—'} · ${esc(c.real_address)||'—'}</div>
+      <div class="actions"><button class="act danger" onclick="disconnectClient('${n}')">Desconectar</button></div></div>
+      <div class="right"><span class="state s-ok"><span class="dot ok"></span>Conectado · ${since(c.connected_since)}</span>
+      <span class="sub">↓ ${fmtBytes(c.bytes_received)}  ·  ↑ ${fmtBytes(c.bytes_sent)}</span></div></div>`;
+  }).join('') : `<div class="empty">Ahora mismo no hay nadie conectado.</div>`;
 }
 
 async function loadLogs(){
@@ -342,6 +393,21 @@ async function revokeClient(name){
     const r=await fetch(`/api/openvpn/clients/${encodeURIComponent(name)}/revoke`,{method:'POST'});
     if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo retirar el acceso.'); return; }
     toast('Acceso retirado ✓'); await load();
+  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+}
+async function renewClient(name){
+  try{
+    const r=await fetch(`/api/openvpn/clients/${encodeURIComponent(name)}/renew`,{method:'POST'});
+    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo renovar.'); return; }
+    toast('Acceso renovado ✓'); await load();
+  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+}
+async function disconnectClient(name){
+  if(!confirm(`¿Desconectar a «${name}» de la VPN ahora mismo?\n\nSe le cortará la conexión actual; podrá volver a conectarse.`)) return;
+  try{
+    const r=await fetch(`/api/openvpn/connections/${encodeURIComponent(name)}/disconnect`,{method:'POST'});
+    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo desconectar.'); return; }
+    toast('Desconectado ✓'); await load();
   }catch(e){ toast('No se pudo conectar con el servidor.'); }
 }
 

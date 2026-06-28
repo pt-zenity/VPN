@@ -16,6 +16,8 @@ def _backend() -> OpenVpnBackend:
         service=settings.openvpn_service,
         sandbox=True,
         log_file=settings.openvpn_log_file,
+        server_conf=settings.openvpn_server_conf,
+        public_endpoint=settings.openvpn_public_endpoint,
     )
 
 
@@ -29,9 +31,11 @@ def tmp_backend(tmp_path) -> OpenVpnBackend:
     shutil.copy(settings.openvpn_status_file, status)
     log = tmp_path / "openvpn.log"
     shutil.copy(settings.openvpn_log_file, log)
+    conf = tmp_path / "server.conf"
+    shutil.copy(settings.openvpn_server_conf, conf)
     return OpenVpnBackend(
         pki_index=pki / "index.txt", status_file=status,
-        service="x", sandbox=True, log_file=log,
+        service="x", sandbox=True, log_file=log, server_conf=conf,
     )
 
 
@@ -178,6 +182,49 @@ class TestServiceAndLogs:
     def test_logs_acota_el_numero(self, tmp_backend):
         assert len(tmp_backend.logs(99999)) <= 1000
 
+    def test_renovar_caducado_lo_reactiva(self, tmp_backend):
+        c = tmp_backend.renew_client("dave-expired")
+        assert c.status == "valid"
+        names = {x.name: x.status for x in tmp_backend.clients()}
+        assert names["dave-expired"] == "valid"
+
+    def test_no_se_renueva_un_retirado(self, tmp_backend):
+        with pytest.raises(Forbidden):
+            tmp_backend.renew_client("carol-old")
+
+    def test_desconectar_quita_la_conexion(self, tmp_backend):
+        assert "alice-laptop" in {c.name for c in tmp_backend.connections()}
+        tmp_backend.disconnect("alice-laptop")
+        assert "alice-laptop" not in {c.name for c in tmp_backend.connections()}
+
+    def test_desconectar_sin_conexion_falla(self, tmp_backend):
+        with pytest.raises(NotFound):
+            tmp_backend.disconnect("dave-expired")
+
+
+class TestServerInfo:
+    def test_lee_configuracion_completa(self):
+        info = _backend().server_info()
+        assert info.port == "1194"
+        assert info.proto == "udp"
+        assert info.subnet == "10.8.0.0 255.255.255.0"
+        assert "AES-256-GCM" in (info.cipher or "")
+        assert info.auth == "SHA256"
+        assert info.max_clients == "50"
+        assert info.crl_enabled is True
+        assert "1.1.1.1" in info.dns_servers
+        assert any("192.168.1.0" in r for r in info.routes)
+        assert len(info.directives) > 10  # todas las directivas, sin filtrar
+
+    def test_endpoint_publico_configurable(self):
+        b = OpenVpnBackend(
+            pki_index=settings.openvpn_pki_index, status_file=settings.openvpn_status_file,
+            service="x", sandbox=True, server_conf=settings.openvpn_server_conf,
+            public_endpoint="vpn.miempresa.com",
+        )
+        assert b.server_info().public_endpoint == "vpn.miempresa.com"
+        assert "vpn.miempresa.com" in b.client_config("alice-laptop")
+
 
 class TestWriteApi:
     @pytest.fixture(autouse=True)
@@ -227,6 +274,23 @@ class TestWriteApi:
         c = TestClient(app)
         assert c.post("/api/openvpn/service/restart").status_code == 401
         assert c.get("/api/openvpn/logs").status_code == 401
+
+    def test_renovar_y_desconectar_por_api(self):
+        r = self.client.post("/api/openvpn/clients/dave-expired/renew")
+        assert r.status_code == 200 and r.json()["status"] == "valid"
+        r = self.client.post("/api/openvpn/connections/alice-laptop/disconnect")
+        assert r.status_code == 204
+        # ya no aparece como conectada
+        names = [c["name"] for c in self.client.get("/api/openvpn/connections").json()]
+        assert "alice-laptop" not in names
+
+    def test_info_servidor_por_api(self):
+        r = self.client.get("/api/openvpn/server")
+        assert r.status_code == 200
+        d = r.json()
+        assert d["port"] == "1194"
+        assert d["public_endpoint"]
+        assert len(d["directives"]) > 10
 
 
 class TestAuthModule:

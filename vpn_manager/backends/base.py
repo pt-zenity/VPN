@@ -36,6 +36,31 @@ class ServiceStatus(BaseModel):
     detail: str = ""
 
 
+class ConfigDirective(BaseModel):
+    key: str
+    value: str = ""
+
+
+class ServerInfo(BaseModel):
+    """Configuración del servidor VPN (solo lectura)."""
+
+    backend: str
+    public_endpoint: str | None = None  # IP/dominio público al que conectan
+    port: str | None = None
+    proto: str | None = None
+    device: str | None = None
+    subnet: str | None = None  # rango de IPs de la VPN
+    cipher: str | None = None  # cifrados de datos
+    auth: str | None = None  # algoritmo de autenticación HMAC
+    tls_version: str | None = None
+    max_clients: str | None = None
+    dns_servers: list[str] = []  # DNS empujados a los clientes
+    routes: list[str] = []  # rutas empujadas a los clientes
+    crl_enabled: bool = False
+    # Todas las directivas del fichero de configuración, sin filtrar.
+    directives: list[ConfigDirective] = []
+
+
 # ── Errores de dominio (la API los traduce a códigos HTTP) ─────────────────────
 class VpnError(Exception):
     """Error de negocio del backend."""
@@ -85,11 +110,23 @@ class VpnBackend(ABC):
         """Devuelve el fichero de configuración del cliente para descargar."""
         raise NotImplementedError
 
-    # ── Control del servicio y registros ───────────────────────────────────
+    def renew_client(self, name: str) -> VpnClient:
+        """Renueva (reemite) el certificado de un cliente activo o caducado."""
+        raise NotImplementedError
+
+    # ── Control del servicio, conexiones y registros ───────────────────────
     def service_action(self, action: str) -> ServiceStatus:
         """Arranca, para, reinicia o recarga el servidor VPN."""
         raise NotImplementedError
 
+    def disconnect(self, name: str) -> None:
+        """Corta la conexión activa de un cliente."""
+        raise NotImplementedError
+
     def logs(self, lines: int = 50) -> list[str]:
         """Últimas líneas del registro del servidor VPN."""
+        raise NotImplementedError
+
+    def server_info(self) -> ServerInfo:
+        """Parámetros de configuración del servidor VPN."""
         raise NotImplementedError

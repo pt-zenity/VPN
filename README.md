@@ -13,7 +13,12 @@ dar de alta personas, descargar su configuración y retirarles el acceso.
 - **Alta de acceso**: crea un nuevo cliente y genera su fichero de configuración.
 - **Descarga de configuración** (`.ovpn`) de cada acceso activo.
 - **Retirar acceso**: revoca el certificado y regenera la CRL.
+- **Renovar acceso**: reemite el certificado de un dispositivo caducado.
+- **Configuración del servidor**: endpoint público, puerto, protocolo, **rango de
+  IPs**, **cifrados**, autenticación, DNS y rutas empujadas, CRL… y todas las
+  directivas del `server.conf`.
 - **Control del servicio**: arrancar, parar, reiniciar y recargar el servidor.
+- **Desconectar** una sesión activa.
 - **Registros**: últimas líneas del log del servidor VPN.
 - **Conexiones en tiempo real**: quién está conectado, desde cuándo y su tráfico.
 - **Interfaz de escritorio** (no móvil) con barra lateral, y **marca por protocolo**:
@@ -70,7 +75,10 @@ ruff check .
 | `GET`  | `/api/openvpn/connections` | Conexiones activas |
 | `POST` | `/api/openvpn/clients` | Alta de cliente `{"name": "..."}` |
 | `POST` | `/api/openvpn/clients/{name}/revoke` | Retira el acceso |
+| `POST` | `/api/openvpn/clients/{name}/renew` | Renueva (reemite) el certificado |
 | `GET`  | `/api/openvpn/clients/{name}/config` | Descarga el `.ovpn` |
+| `POST` | `/api/openvpn/connections/{name}/disconnect` | Corta la conexión activa |
+| `GET`  | `/api/openvpn/server` | Configuración del servidor (rangos, cifrados, DNS…) |
 | `GET`  | `/api/openvpn/logs` | Últimas líneas del registro (`?lines=80`) |
 | `POST` | `/api/openvpn/service/{action}` | `start`/`stop`/`restart`/`reload` |
 

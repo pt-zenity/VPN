@@ -25,7 +25,10 @@ class Settings(BaseSettings):
     openvpn_pki_index: Path = SANDBOX / "openvpn" / "pki" / "index.txt"
     openvpn_status_file: Path = SANDBOX / "openvpn" / "openvpn-status.log"
     openvpn_log_file: Path = SANDBOX / "openvpn" / "openvpn.log"
+    openvpn_server_conf: Path = SANDBOX / "openvpn" / "server.conf"
     openvpn_service: str = "openvpn-server@server"
+    # IP o dominio público al que se conectan los clientes (va en el .ovpn).
+    openvpn_public_endpoint: str = "vpn.ejemplo.local"
 
     # WireGuard (se completará en su fase)
     wireguard_dir: Path = SANDBOX / "wireguard"
