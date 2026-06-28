@@ -310,6 +310,22 @@ class TestWireGuard:
         with pytest.raises(InvalidName):
             tmp_wg.create_client("mal nombre/..")
 
+    def test_editar_config_preserva_clave_y_peers(self, tmp_wg):
+        info = tmp_wg.update_server_config([("Address", "10.50.0.1/24"), ("ListenPort", "51999")])
+        assert info.subnet == "10.50.0.1/24" and info.port == "51999"
+        # los peers se conservan
+        assert {c.name for c in tmp_wg.clients()} == {"ana-portatil", "luis-movil", "tablet-almacen"}
+        # la clave privada del servidor sigue en el fichero (no se perdió ni se expuso "(oculta)")
+        raw = tmp_wg.conf.read_text()
+        assert "PrivateKey = QFXm" in raw
+        assert "(oculta)" not in raw
+
+    def test_editar_config_valida(self, tmp_wg):
+        with pytest.raises(InvalidName):
+            tmp_wg.update_server_config([("ListenPort", "noesnumero")])
+        with pytest.raises(InvalidName):
+            tmp_wg.update_server_config([("Address", "esto-no-es-una-ip")])
+
 
 class TestWireGuardApi:
     @pytest.fixture(autouse=True)
@@ -336,6 +352,16 @@ class TestWireGuardApi:
         d = self.client.get("/api/wireguard/server").json()
         assert d["port"] == "51820" and d["cipher"] == "ChaCha20-Poly1305"
         assert TestClient(app).get("/api/wireguard/clients").status_code == 401
+
+    def test_editar_config_wireguard_por_api(self):
+        sc = self.client.get("/api/wireguard/server/schema").json()
+        assert any(f["key"] == "Address" for f in sc["fields"])
+        r = self.client.put("/api/wireguard/server", json={"directives": [
+            {"key": "Address", "value": "10.9.0.1/24"}, {"key": "ListenPort", "value": "51820"}]})
+        assert r.status_code == 200 and r.json()["port"] == "51820"
+        r = self.client.put("/api/wireguard/server", json={"directives": [
+            {"key": "ListenPort", "value": "abc"}]})
+        assert r.status_code == 422
 
 
 class TestDelivery:

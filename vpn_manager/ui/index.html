@@ -374,7 +374,7 @@ function setBackend(name){
   document.querySelectorAll('#backend-switch button').forEach(b =>
     b.classList.toggle('on', b.dataset.b === name));
   document.getElementById('server-info').innerHTML = '<div class="empty">Cargando…</div>';
-  document.getElementById('cfg-edit-btn').style.display = (name === 'openvpn') ? '' : 'none';
+  document.getElementById('cfg-edit-btn').style.display = '';
   load(); loadLogs();
 }
 
@@ -414,16 +414,21 @@ async function editServer(){
       <div>${ctrl}<div class="errmsg" id="err-${f.key}"></div></div></div>`;
   };
 
-  const advanced = dirs.filter(d => !known.has(d.key));
+  // Solo OpenVPN permite editar directivas «en crudo»; en WireGuard NO, para no
+  // tocar la clave privada ni los bloques [Peer] de los dispositivos.
+  const allowAdvanced = BACKEND === 'openvpn';
+  const advanced = allowAdvanced ? dirs.filter(d => !known.has(d.key)) : [];
   const advHtml = advanced.map((d,i)=>advRowHtml(d.key,d.value,i)).join('');
+  const advSection = allowAdvanced ? `
+      <div class="cfgsub">Otras directivas (avanzado)</div>
+      <div id="adv-rows">${advHtml}</div>` : '<div id="adv-rows"></div>';
 
   document.getElementById('server-info').innerHTML = `
     <div class="cfgform" id="cfgform">
       ${_cfgSchema.map(fieldHtml).join('')}
-      <div class="cfgsub">Otras directivas (avanzado)</div>
-      <div id="adv-rows">${advHtml}</div>
+      ${advSection}
       <div class="cfgbar">
-        <button class="btn addadv" type="button" onclick="addAdvRow()">+ Añadir directiva</button>
+        ${allowAdvanced ? '<button class="btn addadv" type="button" onclick="addAdvRow()">+ Añadir directiva</button>' : ''}
         <button class="btn" type="button" onclick="cancelServer()">Cancelar</button>
         <button class="btn primary" type="button" onclick="saveServer()">Guardar configuración</button>
       </div>

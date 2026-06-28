@@ -302,6 +302,43 @@ class WireGuardBackend(VpnBackend):
                 info.directives.append(ConfigDirective(key=s, value=""))
         return info
 
+    def _peer_section_text(self) -> str:
+        """Texto crudo desde el primer bloque de peer (preserva comentarios/claves)."""
+        lines = self._conf_lines()
+        start = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("[Peer]"):
+                start = i - 1 if i > 0 and lines[i - 1].strip().startswith("#") else i
+                break
+        return "\n".join(lines[start:]) if start is not None else ""
+
+    def update_server_config(self, directives: list[tuple[str, str]]) -> ServerInfo:
+        """Reescribe el [Interface] del wg0.conf preservando la clave privada y los peers."""
+        from .wireguard_schema import validate_directive
+
+        priv = self._parse_interface().get("PrivateKey", "")
+        out: list[str] = []
+        for key, value in directives:
+            key = (key or "").strip()
+            value = (value or "").strip()
+            if not key or key == "PrivateKey":
+                continue  # la clave privada no se edita desde aquí
+            err = validate_directive(key, value)
+            if err:
+                raise InvalidName(err)
+            out.append(f"{key} = {value}" if value else key)
+
+        lines = ["# Configuración WireGuard — gestionada por VPN Manager", "[Interface]"]
+        if priv:
+            lines.append(f"PrivateKey = {priv}")
+        lines.extend(out)
+        body = "\n".join(lines) + "\n"
+        peers = self._peer_section_text()
+        if peers:
+            body += "\n" + peers.rstrip("\n") + "\n"
+        self.conf.write_text(body, encoding="utf-8")
+        return self.server_info()
+
     # ── Control del servicio y registros ───────────────────────────────────
     def service_action(self, action: str) -> ServiceStatus:
         if action not in _SERVICE_ACTIONS:

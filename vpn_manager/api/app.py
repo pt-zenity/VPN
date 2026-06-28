@@ -303,6 +303,23 @@ def wg_server() -> ServerInfo:
     return _wireguard().server_info()
 
 
+@app.get("/api/wireguard/server/schema", dependencies=_PROTECTED)
+def wg_server_schema() -> dict:
+    from ..backends.wireguard_schema import FIELDS
+
+    return {"fields": FIELDS}
+
+
+@app.put("/api/wireguard/server", response_model=ServerInfo, dependencies=_PROTECTED)
+def wg_server_update(body: ServerConfigUpdate, user: str = Depends(require_user)) -> ServerInfo:
+    try:
+        info = _wireguard().update_server_config([(d.key, d.value) for d in body.directives])
+    except VpnError as e:
+        raise _http(e) from e
+    log.info("configuración del servidor WireGuard modificada por %s", user)
+    return info
+
+
 @app.get("/api/wireguard/logs", dependencies=_PROTECTED)
 def wg_logs(lines: int = 80) -> dict:
     return {"lines": _wireguard().logs(lines)}
