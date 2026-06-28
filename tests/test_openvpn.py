@@ -438,6 +438,60 @@ class TestRolesApi:
         assert c.delete("/api/users/oper").status_code == 200
         assert c.delete("/api/users/admin").status_code == 422       # no a sí mismo
 
+    def test_instalacion_solo_admin(self):
+        # admin: simula la instalación (sandbox); operador/visor: 403
+        adm = self._login("admin", "admin123")
+        r = adm.post("/api/system/install/openvpn")
+        assert r.status_code == 200 and r.json()["simulated"] is True
+        assert self._login("oper", "operario1").post("/api/system/install/openvpn").status_code == 403
+        assert self._login("visor", "visor1234").post("/api/system/install/wireguard").status_code == 403
+        # ver info del sistema: cualquiera con sesión
+        assert adm.get("/api/system").status_code == 200
+
+
+class TestInstaller:
+    def test_detecta_distro_desde_texto(self):
+        from vpn_manager.installer import detect_distro
+        d = detect_distro('ID=ubuntu\nID_LIKE=debian\nPRETTY_NAME="Ubuntu 24.04 LTS"')
+        assert d["id"] == "ubuntu" and d["id_like"] == "debian"
+        assert "Ubuntu" in d["name"]
+
+    def test_plan_apt(self):
+        from vpn_manager.installer import install_plan
+        p = install_plan("openvpn", manager="apt")
+        assert p["supported"] and p["package_manager"] == "apt"
+        assert "openvpn" in p["packages"] and "easy-rsa" in p["packages"]
+        assert ["apt-get", "update"] in p["commands"]
+
+    def test_plan_dnf_rhel_anade_epel(self):
+        from vpn_manager.installer import install_plan
+        p = install_plan("openvpn", manager="dnf")
+        # En el host de pruebas (no Fedora) se añade epel-release para OpenVPN.
+        assert "epel-release" in p["packages"] or "fedora" in __import__(
+            "vpn_manager.installer", fromlist=["detect_distro"]).detect_distro()["id"]
+
+    def test_plan_backend_invalido(self):
+        from vpn_manager.installer import InstallError, install_plan
+        with pytest.raises(InstallError):
+            install_plan("ipsec")
+
+    def test_install_sandbox_simula(self):
+        from vpn_manager.installer import install
+        r = install("wireguard", sandbox=True, allow_install=False)
+        assert r["simulated"] is True and r["installed"] is False
+        assert r["plan"]["backend"] == "wireguard"
+
+    def test_install_deshabilitada_en_prod(self):
+        from vpn_manager.installer import InstallError, install
+        with pytest.raises(InstallError):
+            install("openvpn", sandbox=False, allow_install=False)
+
+    def test_system_info_tiene_claves(self):
+        from vpn_manager.installer import system_info
+        info = system_info()
+        assert set(info) >= {"distro", "package_manager", "installed", "is_root", "supported"}
+        assert set(info["installed"]) == {"openvpn", "easyrsa", "wireguard"}
+
 
 class TestDelivery:
     def test_guardar_dentro_del_base(self, tmp_path):

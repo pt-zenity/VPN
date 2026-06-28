@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import auth, delivery, users
+from .. import auth, delivery, installer, users
 from ..backends.base import (
     AlreadyExists,
     Forbidden,
@@ -347,6 +347,31 @@ def openvpn_service_action(action: str, user: str = Depends(require_perm("servic
         raise _http(e) from e
     log.info("acción de servicio «%s» por %s -> activo=%s", action, user, status.active)
     return status
+
+
+# ── Sistema / instalación de servicios ───────────────────────────────────────
+@app.get("/api/system", dependencies=_PROTECTED)
+def system_info() -> dict:
+    return installer.system_info()
+
+
+@app.get("/api/system/install/{backend}/plan", dependencies=_PROTECTED)
+def system_install_plan(backend: str) -> dict:
+    try:
+        return installer.install_plan(backend)
+    except installer.InstallError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+
+@app.post("/api/system/install/{backend}")
+def system_install(backend: str, admin: str = Depends(require_perm("system:install"))) -> dict:
+    try:
+        result = installer.install(backend, settings.sandbox, settings.allow_install)
+    except installer.InstallError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    log.info("instalación de «%s» solicitada por %s (simulada=%s)", backend, admin,
+             result.get("simulated"))
+    return result
 
 
 # ── WireGuard ────────────────────────────────────────────────────────────────

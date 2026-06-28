@@ -174,6 +174,7 @@
       <a data-page="conexiones" onclick="showPage('conexiones')">Conexiones <span class="n" id="nav-conns">·</span></a>
       <a data-page="registros" onclick="showPage('registros')">Registros</a>
       <a data-page="usuarios" id="nav-usuarios" onclick="showPage('usuarios')" style="display:none">Usuarios</a>
+      <a data-page="sistema" onclick="showPage('sistema')">Sistema</a>
     </nav>
     <div class="switch" id="backend-switch">
       <button class="on" data-b="openvpn" onclick="setBackend('openvpn')">OpenVPN</button>
@@ -265,6 +266,16 @@
         <div class="formhint" id="u-hint" style="display:none"></div>
         <div id="users"><div class="empty">Cargando…</div></div>
       </div>
+    </section>
+
+    <section id="sistema" class="page">
+      <div class="sechead"><div><h2>Sistema</h2><p class="hint">Sistema operativo detectado y servicios VPN instalados. El panel puede instalar los que falten.</p></div></div>
+      <div class="stats" style="margin-bottom:16px">
+        <div class="stat"><div class="k">Distribución</div><div class="v" id="sys-distro" style="font-size:18px">—</div></div>
+        <div class="stat"><div class="k">Gestor de paquetes</div><div class="v" id="sys-pm" style="font-size:18px">—</div></div>
+        <div class="stat"><div class="k">Permisos</div><div class="v" id="sys-root" style="font-size:18px">—</div></div>
+      </div>
+      <div class="panel" id="sys-services"><div class="empty">Cargando…</div></div>
     </section>
    </div>
   </main>
@@ -382,6 +393,45 @@ function showPage(id){
   document.querySelector('main').scrollTop = 0;
   window.scrollTo(0,0);
   if(id==='usuarios') loadUsers();
+  if(id==='sistema') loadSystem();
+}
+
+// ── Sistema / instalación ──
+async function loadSystem(){
+  try{
+    const s = await fetch('/api/system').then(r=>r.json());
+    document.getElementById('sys-distro').textContent = (s.distro&&s.distro.name) || 'Linux';
+    document.getElementById('sys-pm').textContent = s.supported ? (s.package_manager||'—') : 'no compatible';
+    document.getElementById('sys-root').textContent = s.is_root ? 'root' : 'sin privilegios';
+    const svc = [
+      {k:'openvpn', label:'OpenVPN', sub:'+ easy-rsa'},
+      {k:'wireguard', label:'WireGuard', sub:'wireguard-tools'},
+    ];
+    document.getElementById('sys-services').innerHTML = svc.map(x=>{
+      const inst = x.k==='openvpn' ? (s.installed.openvpn) : (s.installed.wireguard);
+      const canInstall = can('system:install') && s.supported && !inst;
+      const btn = inst ? '' : (canInstall
+        ? `<button class="btn primary" onclick="installService('${x.k}')">Instalar</button>`
+        : (can('system:install') ? '<span class="sub">distro no compatible</span>' : ''));
+      return `<div class="row"><div><div class="name">${x.label}</div><div class="meta">${x.sub}</div></div>
+        <div class="right"><span class="state ${inst?'s-ok':'s-warn'}"><span class="dot ${inst?'ok':'warn'}"></span>${inst?'Instalado':'No instalado'}</span></div>
+        ${btn?`<div style="margin-left:16px">${btn}</div>`:''}</div>`;
+    }).join('');
+  }catch(e){ document.getElementById('sys-services').innerHTML='<div class="err">No se pudo leer el sistema.</div>'; }
+}
+async function installService(backend){
+  let plan;
+  try{ plan = await fetch('/api/system/install/'+backend+'/plan').then(r=>r.json()); }
+  catch(e){ toast('No se pudo obtener el plan.'); return; }
+  const cmds = (plan.commands||[]).map(c=>'  '+c.join(' ')).join('\n');
+  if(!confirm(`Se instalará ${backend.toUpperCase()} con:\n\n${cmds}\n\n¿Continuar?`)) return;
+  try{
+    const r = await fetch('/api/system/install/'+backend,{method:'POST'});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok){ toast(d.detail||'No se pudo instalar.'); return; }
+    toast(d.simulated ? 'Sandbox: instalación simulada (ver plan) ✓' : 'Instalado ✓');
+    loadSystem();
+  }catch(e){ toast('No se pudo conectar con el servidor.'); }
 }
 
 // ── Permisos / usuario actual ──
