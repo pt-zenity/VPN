@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VPN Manager</title>
+<style>
+  :root{
+    --bg:#fbfbfa; --panel:#ffffff; --ink:#1c1d21; --muted:#6b6f76; --faint:#9a9ea6;
+    --line:#ecedef; --line-strong:#e2e3e6; --accent:#1f6f6b; --accent-soft:#eef4f3;
+    --ok:#3a8f54; --warn:#b07a1e; --stop:#b3493f;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;letter-spacing:-.005em}
+  .wrap{max-width:880px;margin:0 auto;padding:40px 24px 64px}
+
+  header{margin-bottom:30px}
+  .brand{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:.01em}
+  h1{font-size:27px;font-weight:600;letter-spacing:-.02em;margin-top:4px}
+  .lead{color:var(--muted);font-size:15px;margin-top:6px;max-width:62ch}
+
+  .switch{display:inline-flex;background:#f1f1f0;border-radius:11px;padding:3px;margin:22px 0 4px;gap:2px}
+  .switch button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;
+    font-weight:500;padding:7px 18px;border-radius:9px;cursor:pointer}
+  .switch button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.07)}
+  .switch button[disabled]{color:var(--faint);cursor:not-allowed}
+
+  .statusline{display:flex;align-items:center;gap:9px;margin:24px 0 4px;
+    padding:14px 18px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+  .statusline .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .statusline .t{font-weight:600}
+  .statusline .s{color:var(--muted);font-size:14px}
+  .dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.stop{background:var(--stop)}
+  .dot.idle{background:var(--faint)}
+
+  .section{margin-top:34px}
+  .section h2{font-size:13px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--faint)}
+  .section .hint{color:var(--muted);font-size:14px;margin-top:3px;margin-bottom:13px}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .row{display:flex;align-items:center;gap:14px;padding:15px 18px;border-top:1px solid var(--line)}
+  .row:first-child{border-top:0}
+  .row .name{font-weight:560;font-size:15px}
+  .row .meta{color:var(--muted);font-size:13.5px;margin-top:1px}
+  .row .right{margin-left:auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+  .state{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:500}
+  .state .dot{width:8px;height:8px;border-radius:50%}
+  .state.s-ok{color:var(--ok)} .state.s-warn{color:var(--warn)} .state.s-stop{color:var(--stop)}
+  .sub{color:var(--faint);font-size:12.5px;font-variant-numeric:tabular-nums}
+
+  .empty{padding:30px 18px;text-align:center;color:var(--faint);font-size:14px}
+  .err{padding:30px 18px;text-align:center;color:var(--stop);font-size:14px}
+
+  .sechead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+  .btn{border:1px solid var(--line-strong);background:#fff;color:var(--ink);
+    font:inherit;font-size:13.5px;font-weight:500;padding:8px 15px;border-radius:10px;cursor:pointer}
+  .btn:hover{background:#f7f7f6}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:#1a5e5a}
+  .act{background:none;border:0;font:inherit;font-size:13px;font-weight:500;cursor:pointer;
+    color:var(--accent);padding:4px 0}
+  .act:hover{text-decoration:underline}
+  .act.danger{color:var(--stop)}
+  .actions{display:flex;gap:16px;margin-top:7px}
+
+  .addform{display:none;gap:10px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line);
+    background:#fbfbfa}
+  .addform.open{display:flex}
+  .addform input{flex:1;min-width:0;font:inherit;font-size:15px;padding:9px 12px;
+    border:1px solid var(--line-strong);border-radius:10px;background:#fff;color:var(--ink)}
+  .addform input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  .formhint{padding:0 18px 14px;color:var(--faint);font-size:12.5px}
+  .formhint.bad{color:var(--stop)}
+
+  footer{margin-top:40px;color:var(--faint);font-size:12.5px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">VPN Manager</div>
+    <h1>Panel de la VPN</h1>
+    <p class="lead">Desde aquí puedes ver y administrar quién tiene acceso a tu red privada y quién está conectado en este momento. No necesitas usar la línea de comandos.</p>
+
+    <div class="switch">
+      <button class="on">OpenVPN</button>
+      <button disabled title="Disponible próximamente">WireGuard</button>
+    </div>
+  </header>
+
+  <div class="statusline">
+    <span id="svc-dot" class="dot idle"></span>
+    <span class="t" id="svc-title">Comprobando el servidor…</span>
+    <span class="s" id="svc-sub"></span>
+  </div>
+
+  <section class="section">
+    <div class="sechead">
+      <div>
+        <h2>Personas con acceso</h2>
+        <p class="hint">Cada persona o dispositivo tiene un certificado que le permite conectarse. Aquí ves si su acceso está activo, caducado o ha sido retirado.</p>
+      </div>
+      <button class="btn primary" id="add-btn" onclick="toggleForm(true)">Añadir persona</button>
+    </div>
+    <div class="panel">
+      <div class="addform" id="add-form">
+        <input id="add-name" type="text" placeholder="Nombre, p. ej. portátil-ana o móvil-luis"
+               maxlength="64" autocomplete="off" onkeydown="if(event.key==='Enter')createClient()">
+        <button class="btn primary" onclick="createClient()">Crear acceso</button>
+        <button class="btn" onclick="toggleForm(false)">Cancelar</button>
+      </div>
+      <div class="formhint" id="add-hint" style="display:none"></div>
+      <div id="clients"><div class="empty">Cargando…</div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Conectados ahora mismo</h2>
+    <p class="hint">Personas que están usando la VPN en este instante.</p>
+    <div class="panel" id="conns"><div class="empty">Cargando…</div></div>
+  </section>
+
+  <footer>Los datos se actualizan automáticamente cada 10 segundos.</footer>
+</div>
+
+<script>
+const esc = s => (s??'').toString().replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmtBytes = b => { if(!b) return '0 B'; const u=['B','KB','MB','GB','TB']; let i=0; while(b>=1024&&i<u.length-1){b/=1024;i++;} return b.toFixed(i?1:0)+' '+u[i]; };
+const fmtDate = s => s ? new Date(s).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}) : '—';
+const since = s => {
+  if(!s) return '—';
+  const m = Math.max(0, Math.round((Date.now()-new Date(s))/60000));
+  if(m<60) return 'hace '+m+' min';
+  const h=Math.floor(m/60); if(h<24) return 'hace '+h+' h '+(m%60)+' min';
+  return 'hace '+Math.floor(h/24)+' días';
+};
+
+const CLIENT_STATE = {
+  valid:   {cls:'s-ok',   dot:'ok',   label:'Acceso activo'},
+  revoked: {cls:'s-stop', dot:'stop', label:'Acceso retirado'},
+  expired: {cls:'s-warn', dot:'warn', label:'Caducado'},
+};
+
+async function load(){
+  try{
+    const [st, cl, cn] = await Promise.all([
+      fetch('/api/openvpn/status').then(r=>r.json()),
+      fetch('/api/openvpn/clients').then(r=>r.json()),
+      fetch('/api/openvpn/connections').then(r=>r.json()),
+    ]);
+
+    // Estado del servidor, en lenguaje llano
+    const dot = document.getElementById('svc-dot');
+    const title = document.getElementById('svc-title');
+    const sub = document.getElementById('svc-sub');
+    if(st.active){
+      dot.className='dot ok';
+      title.textContent='La VPN está funcionando';
+      sub.textContent = st.detail==='sandbox' ? '· modo de prueba' : '';
+    }else{
+      dot.className='dot stop';
+      title.textContent='La VPN está detenida';
+      sub.textContent='nadie puede conectarse';
+    }
+
+    // Personas con acceso
+    document.getElementById('clients').innerHTML = cl.length ? cl.map(c=>{
+      const s = CLIENT_STATE[c.status] || {cls:'',dot:'idle',label:c.status};
+      const caduca = c.status==='valid' && c.expires_at
+        ? 'Caduca el '+fmtDate(c.expires_at)
+        : (c.status==='expired' && c.expires_at ? 'Caducó el '+fmtDate(c.expires_at) : '');
+      const n = esc(c.name);
+      const actions = c.status==='valid' ? `<div class="actions">
+          <a class="act" href="/api/openvpn/clients/${encodeURIComponent(c.name)}/config" download>Descargar configuración</a>
+          <button class="act danger" onclick="revokeClient('${n}')">Retirar acceso</button>
+        </div>` : '';
+      return `<div class="row">
+        <div>
+          <div class="name">${n}</div>
+          ${caduca?`<div class="meta">${caduca}</div>`:''}
+          ${actions}
+        </div>
+        <div class="right">
+          <span class="state ${s.cls}"><span class="dot ${s.dot}"></span>${s.label}</span>
+        </div>
+      </div>`;
+    }).join('') : `<div class="empty">Todavía no hay nadie con acceso.</div>`;
+
+    // Conectados ahora
+    document.getElementById('conns').innerHTML = cn.length ? cn.map(c=>`
+      <div class="row">
+        <div>
+          <div class="name">${esc(c.name)}</div>
+          <div class="meta">Dirección en la red: ${esc(c.virtual_address)||'—'}</div>
+        </div>
+        <div class="right">
+          <span class="state s-ok"><span class="dot ok"></span>Conectado · ${since(c.connected_since)}</span>
+          <span class="sub">↓ ${fmtBytes(c.bytes_received)}  ·  ↑ ${fmtBytes(c.bytes_sent)}</span>
+        </div>
+      </div>`).join('') : `<div class="empty">Ahora mismo no hay nadie conectado.</div>`;
+
+  }catch(e){
+    document.getElementById('svc-dot').className='dot warn';
+    document.getElementById('svc-title').textContent='No se pudo contactar con el panel';
+    document.getElementById('clients').innerHTML='<div class="err">No se pudieron cargar los datos.</div>';
+    document.getElementById('conns').innerHTML='';
+  }
+}
+
+// ── Acciones ────────────────────────────────────────────────────────────────
+function toggleForm(open){
+  document.getElementById('add-form').classList.toggle('open', open);
+  document.getElementById('add-btn').style.visibility = open ? 'hidden' : 'visible';
+  hint('');
+  if(open) setTimeout(()=>document.getElementById('add-name').focus(), 30);
+}
+function hint(msg, bad){
+  const h = document.getElementById('add-hint');
+  h.textContent = msg; h.className = 'formhint'+(bad?' bad':'');
+  h.style.display = msg ? 'block' : 'none';
+}
+async function createClient(){
+  const input = document.getElementById('add-name');
+  const name = input.value.trim();
+  if(!name){ hint('Escribe un nombre para identificar a la persona o dispositivo.', true); return; }
+  hint('Creando acceso…');
+  try{
+    const r = await fetch('/api/openvpn/clients', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name}),
+    });
+    if(!r.ok){
+      const d = await r.json().catch(()=>({}));
+      hint(d.detail || 'No se pudo crear el acceso.', true); return;
+    }
+    input.value='';
+    toggleForm(false);
+    await load();
+  }catch(e){ hint('No se pudo conectar con el servidor.', true); }
+}
+async function revokeClient(name){
+  if(!confirm(`¿Seguro que quieres retirar el acceso de «${name}»?\n\nDejará de poder conectarse a la VPN. Esta acción no se puede deshacer.`)) return;
+  try{
+    const r = await fetch(`/api/openvpn/clients/${encodeURIComponent(name)}/revoke`, {method:'POST'});
+    if(!r.ok){
+      const d = await r.json().catch(()=>({}));
+      alert(d.detail || 'No se pudo retirar el acceso.'); return;
+    }
+    await load();
+  }catch(e){ alert('No se pudo conectar con el servidor.'); }
+}
+
+load(); setInterval(load, 10000);
+</script>
+</body>
+</html>

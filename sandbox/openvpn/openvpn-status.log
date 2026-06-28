@@ -1,0 +1,12 @@
+OpenVPN CLIENT LIST
+Updated,2026-06-21 10:00:00
+Common Name,Real Address,Bytes Received,Bytes Sent,Connected Since
+alice-laptop,203.0.113.10:51000,1048576,2097152,2026-06-21 09:30:00
+bob-phone,198.51.100.22:44000,524288,1048576,2026-06-21 09:45:00
+ROUTING TABLE
+Virtual Address,Common Name,Real Address,Last Ref
+10.8.0.2,alice-laptop,203.0.113.10:51000,2026-06-21 10:00:00
+10.8.0.3,bob-phone,198.51.100.22:44000,2026-06-21 10:00:00
+GLOBAL STATS
+Max bcast/mcast queue length,1
+END

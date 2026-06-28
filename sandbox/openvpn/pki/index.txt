@@ -1,0 +1,5 @@
+V	271231235959Z		01	unknown	/CN=server
+V	271231235959Z		02	unknown	/CN=alice-laptop
+V	271231235959Z		03	unknown	/CN=bob-phone
+R	271231235959Z	260501120000Z	04	unknown	/CN=carol-old
+E	240101000000Z		05	unknown	/CN=dave-expired

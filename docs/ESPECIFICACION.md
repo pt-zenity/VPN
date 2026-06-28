@@ -1,0 +1,77 @@
+# VPN Manager — Especificación y hoja de ruta
+
+> Panel web para **gestionar un servidor VPN** (OpenVPN **y** WireGuard) desde una
+> interfaz, en lugar de por línea de comandos. Estado: **especificación inicial**
+> (2026-06-21). Pendiente de confirmar stack para arrancar el scaffold.
+
+## 1. Objetivo
+
+Hacer por web todo lo que hoy se hace por CLI en el propio servidor VPN:
+
+- **Clientes / peers**: crear, listar, descargar config (`.ovpn` / `wg.conf`),
+  habilitar/deshabilitar, **revocar**.
+- **Certificados / claves**: PKI de OpenVPN (CA, server, clientes vía easy-rsa) y
+  pares de claves WireGuard; ver caducidades, revocar (CRL).
+- **Conexiones activas**: quién está conectado ahora (IP, desde cuándo, tráfico).
+  OpenVPN vía `status` / management interface; WireGuard vía `wg show`.
+- **Historial**: conexiones/desconexiones a lo largo del tiempo.
+- **Estado del servicio**: estado de `openvpn-server@` / `wg-quick@`, arrancar/
+  parar/recargar, ver logs.
+- **Soporta los dos**: OpenVPN y WireGuard, con un modelo común y adaptadores.
+
+## 2. Principios de diseño
+
+- **Adaptador por backend VPN**: una interfaz común (`VpnBackend`) con dos
+  implementaciones (`OpenVpnBackend`, `WireGuardBackend`). La UI y la API no
+  conocen los detalles de cada uno.
+- **UX para no-técnicos**: la interfaz debe poder usarla alguien **sin
+  conocimientos técnicos**. Elegante y sobria (un solo color de acento, casi sin
+  iconos), lenguaje llano en vez de jerga ("Acceso activo / retirado / caducado"
+  en lugar de "valid/revoked/expired"; "Dirección en la red" en lugar de "IP
+  virtual"). Cada acción de CLI se ofrece como un botón claro con microcopia que
+  explique qué hace.
+- **Configurable y SEGURO POR DEFECTO en dev**: rutas y servicios configurables
+  (`/etc/openvpn`, `/etc/wireguard`, comandos). En **desarrollo apunta a un
+  sandbox** (`./sandbox/...`), **NUNCA al VPN de producción del homelab** (que es
+  delicado / de José). Apuntar al servidor real es una decisión explícita de prod.
+- **Privilegios mínimos**: las operaciones que requieren root (recargar servicio,
+  escribir en `/etc/...`) se acotan; idealmente vía sudoers específicos o una capa
+  de ejecución controlada. Nunca `shell=True` con entrada del usuario.
+
+## 3. Seguridad (es gestión de acceso remoto → crítico)
+
+- Autenticación fuerte (login + sesión httpOnly), autorización por rol, rate-limit.
+- **Auditoría**: registro de toda acción sensible (crear/revocar cliente, parar
+  servicio) con usuario, hora y resultado.
+- **Acceso solo interno** (como CyberHound): nunca expuesto a internet.
+- Validación estricta de entrada (nombres de cliente, etc.) → sin inyección de
+  comandos. Plantillas de config parametrizadas.
+- Las **claves privadas** de cliente se entregan una vez y no se almacenan en claro
+  innecesariamente; CRL al revocar.
+
+## 4. Stack (confirmado)
+
+**Python + FastAPI** (encaja con herramientas de sistema: subprocess, parseo de
+status, PKI) + UI web ligera servida por la propia API. Coherente con CyberHound.
+
+> **Publicación:** este proyecto **sí se publicará en GitHub** (público, MIT)
+> cuando esté todo verificado — a diferencia de FieldFlow. Hasta entonces, commits
+> en local sin push y sin atribución a IA.
+
+## 5. Hoja de ruta por fases
+
+1. **[HECHO] Scaffold + adaptador OpenVPN (lectura)**: estado del servicio, listar
+   clientes/certs (parseo de la PKI/index), conexiones activas (status file).
+2. **[HECHO] Gestión OpenVPN (escritura)**: crear cliente, descargar `.ovpn`,
+   revocar (CRL). En **sandbox** (en real delega en easy-rsa). 21 tests verdes.
+3. **WireGuard**: adaptador (peers, `wg show`, generar config, habilitar/quitar).
+4. **Historial + auditoría + UI pulida**.
+5. **Despliegue interno** (cuando José lo diga): apuntar al servidor real con
+   privilegios acotados, detrás del proxy interno.
+
+## 6. Datos de entorno (verificado 2026-06-21)
+
+- `openvpn` instalado (`/usr/sbin/openvpn`), con `/etc/openvpn/{server,client}`.
+- WireGuard **no** instalado (se añadirá `wireguard-tools` para desarrollar su
+  adaptador, o se simula en sandbox).
+- ⚠️ El OpenVPN **de producción del homelab no se toca** en desarrollo autónomo.

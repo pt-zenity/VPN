@@ -1,0 +1,31 @@
+# Entornos / Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Configuración local / secretos
+.env
+.env.*
+
+# Material criptográfico real — NUNCA debe subirse a GitHub
+*.key
+*.crt
+*.pem
+*.csr
+*.p12
+*.ovpn
+*.conf.priv
+crl.pem
+
+# Configuraciones de cliente generadas (sandbox y producción)
+sandbox/openvpn/clients/
+sandbox/wireguard/clients/
+
+# Sistema
+.DS_Store
