@@ -164,6 +164,11 @@ async def security_headers(request: Request, call_next):
     response = await call_next(request)
     for k, v in _SECURITY_HEADERS.items():
         response.headers.setdefault(k, v)
+    # HSTS solo detrás de HTTPS (cuando se sirve con cookie segura).
+    if settings.cookie_secure:
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
     # Nunca cachear el panel ni la API (pueden contener datos sensibles).
     if request.url.path != "/health":
         response.headers["Cache-Control"] = "no-store"

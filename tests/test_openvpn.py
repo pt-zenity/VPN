@@ -792,3 +792,11 @@ class TestSecurityHeaders:
         _login(c)
         r = c.get("/api/openvpn/clients")
         assert r.headers["cache-control"] == "no-store"
+
+    def test_hsts_solo_con_https(self, monkeypatch):
+        # Sin cookie_secure (HTTP) no hay HSTS.
+        assert "strict-transport-security" not in TestClient(app).get("/health").headers
+        # Con cookie_secure (detrás de HTTPS) sí.
+        monkeypatch.setattr(settings, "cookie_secure", True)
+        r = TestClient(app).get("/health")
+        assert "max-age=" in r.headers.get("strict-transport-security", "")
