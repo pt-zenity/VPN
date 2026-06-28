@@ -1,0 +1,22 @@
+interface: wg0
+  public key: SrvPubKeyZZZsandboxNoRealZZZZZZZZZZZZZ999999=
+  private key: (hidden)
+  listening port: 51820
+
+peer: AnaPubKeyZZZsandboxNoRealZZZZZZZZZZZZZZ012345=
+  endpoint: 203.0.113.10:51000
+  allowed ips: 10.9.0.2/32
+  latest handshake: 1 minute, 12 seconds ago
+  transfer: 1.05 MiB received, 2.10 MiB sent
+  persistent keepalive: every 25 seconds
+
+peer: LuisPubKeyZZsandboxNoRealZZZZZZZZZZZZZ678901=
+  endpoint: 198.51.100.22:44000
+  allowed ips: 10.9.0.3/32
+  latest handshake: 3 minutes, 40 seconds ago
+  transfer: 512.00 KiB received, 1.00 MiB sent
+  persistent keepalive: every 25 seconds
+
+peer: TabletPubKeysandboxNoRealZZZZZZZZZZZZ234567=
+  allowed ips: 10.9.0.4/32
+  persistent keepalive: every 25 seconds

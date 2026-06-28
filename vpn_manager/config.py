@@ -30,9 +30,14 @@ class Settings(BaseSettings):
     # IP o dominio público al que se conectan los clientes (va en el .ovpn).
     openvpn_public_endpoint: str = "vpn.ejemplo.local"
 
-    # WireGuard (se completará en su fase)
+    # WireGuard
     wireguard_dir: Path = SANDBOX / "wireguard"
+    wireguard_conf: Path = SANDBOX / "wireguard" / "wg0.conf"
+    wireguard_show_file: Path = SANDBOX / "wireguard" / "wg-show.txt"
+    wireguard_log_file: Path = SANDBOX / "wireguard" / "wireguard.log"
     wireguard_interface: str = "wg0"
+    wireguard_public_endpoint: str = "vpn.ejemplo.local"
+    wireguard_dns: str = "1.1.1.1"
 
     # ── Autenticación del panel ────────────────────────────────────────────
     admin_user: str = "admin"

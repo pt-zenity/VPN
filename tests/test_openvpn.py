@@ -6,7 +6,23 @@ from fastapi.testclient import TestClient
 from vpn_manager.api.app import app
 from vpn_manager.backends.base import AlreadyExists, Forbidden, InvalidName, NotFound
 from vpn_manager.backends.openvpn import OpenVpnBackend
+from vpn_manager.backends.wireguard import WireGuardBackend
 from vpn_manager.config import settings
+
+
+@pytest.fixture
+def tmp_wg(tmp_path) -> WireGuardBackend:
+    """Backend WireGuard sobre una copia temporal del wg0.conf."""
+    conf = tmp_path / "wg0.conf"
+    shutil.copy(settings.wireguard_conf, conf)
+    show = tmp_path / "wg-show.txt"
+    shutil.copy(settings.wireguard_show_file, show)
+    log = tmp_path / "wireguard.log"
+    shutil.copy(settings.wireguard_log_file, log)
+    return WireGuardBackend(
+        conf=conf, show_file=show, service="wg-quick@wg0", sandbox=True,
+        interface="wg0", log_file=log, public_endpoint="vpn.miempresa.com",
+    )
 
 
 def _backend() -> OpenVpnBackend:
@@ -224,6 +240,79 @@ class TestServerInfo:
         )
         assert b.server_info().public_endpoint == "vpn.miempresa.com"
         assert "vpn.miempresa.com" in b.client_config("alice-laptop")
+
+
+class TestWireGuard:
+    def test_clients_lee_peers(self, tmp_wg):
+        names = {c.name for c in tmp_wg.clients()}
+        assert names == {"ana-portatil", "luis-movil", "tablet-almacen"}
+        assert all(c.status == "valid" and c.expires_at is None for c in tmp_wg.clients())
+
+    def test_connections_solo_con_handshake(self, tmp_wg):
+        conns = {c.name: c for c in tmp_wg.connections()}
+        assert set(conns) == {"ana-portatil", "luis-movil"}  # tablet sin handshake
+        assert conns["ana-portatil"].virtual_address == "10.9.0.2"
+        assert conns["ana-portatil"].bytes_received == int(1.05 * 1024**2)
+        assert conns["ana-portatil"].connected_since is not None
+
+    def test_alta_asigna_ip_y_guarda_config(self, tmp_wg):
+        c = tmp_wg.create_client("nuevo-pc")
+        assert c.status == "valid"
+        cfg = tmp_wg.client_config("nuevo-pc")
+        assert "10.9.0.5/32" in cfg  # .2,.3,.4 ocupadas → siguiente .5
+        assert "vpn.miempresa.com:51820" in cfg
+        assert "nuevo-pc" in {p.name for p in tmp_wg.clients()}
+
+    def test_alta_duplicada_falla(self, tmp_wg):
+        with pytest.raises(AlreadyExists):
+            tmp_wg.create_client("ana-portatil")
+
+    def test_baja_quita_el_peer(self, tmp_wg):
+        tmp_wg.revoke_client("luis-movil")
+        assert "luis-movil" not in {p.name for p in tmp_wg.clients()}
+
+    def test_server_info_no_expone_clave_privada(self, tmp_wg):
+        info = tmp_wg.server_info()
+        assert info.port == "51820"
+        assert info.subnet == "10.9.0.1/24"
+        assert info.cipher == "ChaCha20-Poly1305"
+        priv = [d for d in info.directives if d.key == "PrivateKey"]
+        assert priv and priv[0].value == "(oculta)"  # nunca se expone
+
+    def test_qr_genera_svg(self, tmp_wg):
+        svg = tmp_wg.client_qr_svg("ana-portatil")
+        assert svg.lstrip().startswith("<svg")
+
+    def test_nombre_invalido(self, tmp_wg):
+        with pytest.raises(InvalidName):
+            tmp_wg.create_client("mal nombre/..")
+
+
+class TestWireGuardApi:
+    @pytest.fixture(autouse=True)
+    def _isolate(self, tmp_path, monkeypatch):
+        conf = tmp_path / "wg0.conf"
+        shutil.copy(settings.wireguard_conf, conf)
+        show = tmp_path / "wg-show.txt"
+        shutil.copy(settings.wireguard_show_file, show)
+        monkeypatch.setattr(settings, "wireguard_conf", conf)
+        monkeypatch.setattr(settings, "wireguard_show_file", show)
+        self.client = TestClient(app)
+        _login(self.client)
+
+    def test_flujo_wireguard_por_api(self):
+        assert len(self.client.get("/api/wireguard/clients").json()) == 3
+        assert len(self.client.get("/api/wireguard/connections").json()) == 2
+        r = self.client.post("/api/wireguard/clients", json={"name": "movil-jose"})
+        assert r.status_code == 201
+        r = self.client.get("/api/wireguard/clients/movil-jose/qr")
+        assert r.status_code == 200 and "svg" in r.headers["content-type"]
+        assert self.client.post("/api/wireguard/clients/movil-jose/revoke").status_code == 200
+
+    def test_server_y_login(self):
+        d = self.client.get("/api/wireguard/server").json()
+        assert d["port"] == "51820" and d["cipher"] == "ChaCha20-Poly1305"
+        assert TestClient(app).get("/api/wireguard/clients").status_code == 401
 
 
 class TestWriteApi:

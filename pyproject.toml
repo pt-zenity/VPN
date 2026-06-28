@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings>=2.2",
     "itsdangerous>=2.1",
     "python-multipart>=0.0.9",
+    "segno>=1.6",
 ]
 
 [project.optional-dependencies]

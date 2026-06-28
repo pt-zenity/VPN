@@ -28,6 +28,7 @@ from ..backends.base import (
     VpnError,
 )
 from ..backends.openvpn import OpenVpnBackend
+from ..backends.wireguard import WireGuardBackend
 from ..config import settings
 
 _UI = Path(__file__).resolve().parent.parent / "ui"
@@ -62,6 +63,19 @@ def _openvpn() -> OpenVpnBackend:
         log_file=settings.openvpn_log_file,
         server_conf=settings.openvpn_server_conf,
         public_endpoint=settings.openvpn_public_endpoint,
+    )
+
+
+def _wireguard() -> WireGuardBackend:
+    return WireGuardBackend(
+        conf=settings.wireguard_conf,
+        show_file=settings.wireguard_show_file,
+        service=f"wg-quick@{settings.wireguard_interface}",
+        sandbox=settings.sandbox,
+        interface=settings.wireguard_interface,
+        log_file=settings.wireguard_log_file,
+        public_endpoint=settings.wireguard_public_endpoint,
+        dns=settings.wireguard_dns,
     )
 
 
@@ -203,6 +217,94 @@ def openvpn_service_action(action: str, user: str = Depends(require_user)) -> Se
     except VpnError as e:
         raise _http(e) from e
     log.info("acción de servicio «%s» por %s -> activo=%s", action, user, status.active)
+    return status
+
+
+# ── WireGuard ────────────────────────────────────────────────────────────────
+@app.get("/api/wireguard/status", response_model=ServiceStatus, dependencies=_PROTECTED)
+def wg_status() -> ServiceStatus:
+    return _wireguard().status()
+
+
+@app.get("/api/wireguard/clients", response_model=list[VpnClient], dependencies=_PROTECTED)
+def wg_clients() -> list[VpnClient]:
+    return _wireguard().clients()
+
+
+@app.get(
+    "/api/wireguard/connections", response_model=list[VpnConnection], dependencies=_PROTECTED
+)
+def wg_connections() -> list[VpnConnection]:
+    return _wireguard().connections()
+
+
+@app.get("/api/wireguard/server", response_model=ServerInfo, dependencies=_PROTECTED)
+def wg_server() -> ServerInfo:
+    return _wireguard().server_info()
+
+
+@app.get("/api/wireguard/logs", dependencies=_PROTECTED)
+def wg_logs(lines: int = 80) -> dict:
+    return {"lines": _wireguard().logs(lines)}
+
+
+@app.post(
+    "/api/wireguard/clients", response_model=VpnClient, status_code=201, dependencies=_PROTECTED
+)
+def wg_create(body: CreateClient, user: str = Depends(require_user)) -> VpnClient:
+    try:
+        client = _wireguard().create_client(body.name)
+    except VpnError as e:
+        raise _http(e) from e
+    log.info("alta de dispositivo WireGuard «%s» por %s", client.name, user)
+    return client
+
+
+@app.post(
+    "/api/wireguard/clients/{name}/revoke", response_model=VpnClient, dependencies=_PROTECTED
+)
+def wg_revoke(name: str, user: str = Depends(require_user)) -> VpnClient:
+    try:
+        client = _wireguard().revoke_client(name)
+    except VpnError as e:
+        raise _http(e) from e
+    log.info("baja de dispositivo WireGuard «%s» por %s", client.name, user)
+    return client
+
+
+@app.get(
+    "/api/wireguard/clients/{name}/config",
+    response_class=PlainTextResponse,
+    dependencies=_PROTECTED,
+)
+def wg_config(name: str) -> Response:
+    try:
+        text = _wireguard().client_config(name)
+    except VpnError as e:
+        raise _http(e) from e
+    return PlainTextResponse(
+        text, headers={"Content-Disposition": f'attachment; filename="{name}.conf"'}
+    )
+
+
+@app.get("/api/wireguard/clients/{name}/qr", dependencies=_PROTECTED)
+def wg_qr(name: str) -> Response:
+    try:
+        svg = _wireguard().client_qr_svg(name)
+    except VpnError as e:
+        raise _http(e) from e
+    return Response(content=svg, media_type="image/svg+xml")
+
+
+@app.post(
+    "/api/wireguard/service/{action}", response_model=ServiceStatus, dependencies=_PROTECTED
+)
+def wg_service_action(action: str, user: str = Depends(require_user)) -> ServiceStatus:
+    try:
+        status = _wireguard().service_action(action)
+    except VpnError as e:
+        raise _http(e) from e
+    log.info("acción de servicio WireGuard «%s» por %s -> activo=%s", action, user, status.active)
     return status
 
 
