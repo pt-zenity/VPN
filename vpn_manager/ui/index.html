@@ -295,6 +295,7 @@
         <div class="stat"><div class="k">Permisos</div><div class="v" id="sys-root" style="font-size:18px">—</div></div>
       </div>
       <div class="panel" id="sys-services"><div class="empty">Cargando…</div></div>
+      <div id="sys-preflight"></div>
     </section>
 
     <section id="cuenta" class="page">
@@ -518,6 +519,19 @@ async function loadSystem(){
         ${btn?`<div style="margin-left:16px;display:flex;gap:8px">${btn}</div>`:''}</div>`;
     }).join('');
   }catch(e){ document.getElementById('sys-services').innerHTML='<div class="err">No se pudo leer el sistema.</div>'; }
+  loadPreflight();
+}
+async function loadPreflight(){
+  const box = document.getElementById('sys-preflight');
+  if(!can('users:manage')){ box.innerHTML=''; return; }
+  try{
+    const d = await fetch('/api/preflight').then(r=>r.json());
+    const dot = {ok:'ok', info:'idle', warn:'warn'};
+    const rows = (d.checks||[]).map(c=>`<div class="row"><div><div class="name" style="font-weight:500">${esc(c.message)}</div></div>
+      <div class="right"><span class="dot ${dot[c.level]||'idle'}"></span></div></div>`).join('');
+    box.innerHTML = `<h2 style="margin:26px 0 10px">Comprobaciones de seguridad</h2>
+      <div class="panel">${rows||'<div class="empty">—</div>'}</div>`;
+  }catch(e){ box.innerHTML=''; }
 }
 async function bootstrapService(backend){
   let plan;

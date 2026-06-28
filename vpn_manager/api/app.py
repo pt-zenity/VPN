@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import audit, auth, bootstrap, delivery, installer, totp, users
+from .. import audit, auth, bootstrap, delivery, installer, preflight, totp, users
 from ..backends.base import (
     AlreadyExists,
     Forbidden,
@@ -428,6 +428,12 @@ def openvpn_service_action(action: str, user: str = Depends(require_perm("servic
 @app.get("/api/system", dependencies=_PROTECTED)
 def system_info() -> dict:
     return installer.system_info()
+
+
+@app.get("/api/preflight", dependencies=[Depends(require_perm("users:manage"))])
+def preflight_checks() -> dict:
+    items = preflight.checks(settings)
+    return {"checks": items, "level": preflight.summary_level(items)}
 
 
 @app.get("/api/system/install/{backend}/plan", dependencies=_PROTECTED)

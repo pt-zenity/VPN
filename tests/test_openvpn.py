@@ -471,6 +471,39 @@ class TestRolesApi:
         assert self._login("visor", "visor1234").post("/api/system/install/wireguard").status_code == 403
         # ver info del sistema: cualquiera con sesión
         assert adm.get("/api/system").status_code == 200
+        # preflight de seguridad: solo admin
+        r = adm.get("/api/preflight")
+        assert r.status_code == 200 and isinstance(r.json()["checks"], list)
+        assert self._login("visor", "visor1234").get("/api/preflight").status_code == 403
+
+
+class TestPreflight:
+    def _s(self, **kw):
+        import types
+        base = dict(sandbox=True, admin_password_hash="", secret_key="",
+                    cookie_secure=False, allow_install=False)
+        base.update(kw)
+        return types.SimpleNamespace(**base)
+
+    def test_sandbox_avisa_de_dev(self):
+        from vpn_manager.preflight import checks, summary_level
+        items = checks(self._s())
+        msgs = " ".join(c["message"] for c in items)
+        assert "admin/admin" in msgs and "efímera" in msgs
+        assert summary_level(items) == "warn"
+
+    def test_produccion_bien_configurada_es_ok(self):
+        from vpn_manager.preflight import checks, summary_level
+        items = checks(self._s(sandbox=False, admin_password_hash="x", secret_key="k",
+                               cookie_secure=True))
+        assert summary_level(items) == "ok"
+        assert all(c["level"] == "ok" for c in items)
+
+    def test_produccion_sin_https_avisa(self):
+        from vpn_manager.preflight import checks
+        items = checks(self._s(sandbox=False, admin_password_hash="x", secret_key="k",
+                               cookie_secure=False))
+        assert any(c["level"] == "warn" and "Secure" in c["message"] for c in items)
 
 
 class TestInstaller:
