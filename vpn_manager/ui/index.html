@@ -35,9 +35,10 @@
   .svc-chip .t{font-size:13.5px;font-weight:500;color:#fff}
   .svc-chip .s{font-size:11.5px;color:#8a9893}
   nav{display:flex;flex-direction:column;gap:2px}
-  nav a{color:var(--sidebar-ink);text-decoration:none;font-size:14px;font-weight:500;
+  nav a{color:var(--sidebar-ink);text-decoration:none;font-size:14px;font-weight:500;cursor:pointer;
     padding:9px 12px;border-radius:9px;display:flex;justify-content:space-between;align-items:center}
   nav a:hover{background:var(--sidebar-active);color:#fff}
+  nav a.active{background:var(--sidebar-active);color:#fff}
   nav a .n{background:#33433f;color:#bcd;font-size:11.5px;font-weight:600;border-radius:20px;
     padding:1px 8px;min-width:22px;text-align:center}
   .side .switch{margin-top:20px;background:#243330;border-radius:10px;padding:3px;display:flex;gap:2px}
@@ -56,7 +57,9 @@
   h1{font-size:25px;font-weight:600;letter-spacing:-.02em}
   .lead{color:var(--muted);font-size:15px;margin-top:6px;margin-bottom:8px;max-width:78ch}
 
-  section{margin-top:36px;scroll-margin-top:20px}
+  section{margin-top:14px}
+  section.page{display:none}
+  section.page.active{display:block}
   .sechead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:13px}
   section h2{font-size:13px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--faint)}
   section .hint{color:var(--muted);font-size:14px;margin-top:3px}
@@ -158,13 +161,13 @@
       <span id="svc-dot" class="dot idle"></span>
       <div><div class="t" id="svc-title">Comprobando…</div><div class="s" id="svc-sub"></div></div>
     </div>
-    <nav>
-      <a href="#resumen">Resumen</a>
-      <a href="#servicio">Servicio</a>
-      <a href="#servidor">Configuración</a>
-      <a href="#clientes">Dispositivos <span class="n" id="nav-clients">·</span></a>
-      <a href="#conexiones">Conexiones <span class="n" id="nav-conns">·</span></a>
-      <a href="#registros">Registros</a>
+    <nav id="nav">
+      <a data-page="resumen" onclick="showPage('resumen')">Resumen</a>
+      <a data-page="servicio" onclick="showPage('servicio')">Servicio</a>
+      <a data-page="servidor" onclick="showPage('servidor')">Configuración</a>
+      <a data-page="clientes" onclick="showPage('clientes')">Dispositivos <span class="n" id="nav-clients">·</span></a>
+      <a data-page="conexiones" onclick="showPage('conexiones')">Conexiones <span class="n" id="nav-conns">·</span></a>
+      <a data-page="registros" onclick="showPage('registros')">Registros</a>
     </nav>
     <div class="switch" id="backend-switch">
       <button class="on" data-b="openvpn" onclick="setBackend('openvpn')">OpenVPN</button>
@@ -180,7 +183,7 @@
     <h1>Panel de la VPN</h1>
     <p class="lead">Administra tu servidor VPN: el estado del servicio, quién tiene acceso, quién está conectado y los registros. Todo lo que harías por línea de comandos, desde aquí.</p>
 
-    <section id="resumen">
+    <section id="resumen" class="page">
       <div class="sechead"><div><h2>Resumen</h2></div></div>
       <div class="stats">
         <div class="stat"><div class="k">Servicio</div><div class="v" id="st-svc">—</div></div>
@@ -190,7 +193,7 @@
       </div>
     </section>
 
-    <section id="servicio">
+    <section id="servicio" class="page">
       <div class="sechead"><div><h2>Servicio</h2><p class="hint" id="svc-hint">Controla el servidor. «Recargar» relee la configuración sin cortar a los conectados; «Reiniciar» los desconecta un instante.</p></div></div>
       <div class="panel"><div class="controls">
         <span class="state" id="svc-state"><span class="dot idle"></span>—</span>
@@ -202,7 +205,7 @@
       </div></div>
     </section>
 
-    <section id="servidor">
+    <section id="servidor" class="page">
       <div class="sechead">
         <div><h2>Configuración del servidor</h2><p class="hint" id="cfg-hint">Parámetros con los que está funcionando el servidor. Puedes editarlos.</p></div>
         <button class="btn" id="cfg-edit-btn" onclick="editServer()">Editar configuración</button>
@@ -210,7 +213,7 @@
       <div class="panel"><div id="server-info"><div class="empty">Cargando…</div></div></div>
     </section>
 
-    <section id="clientes">
+    <section id="clientes" class="page">
       <div class="sechead">
         <div><h2>Dispositivos con acceso</h2><p class="hint">Cada dispositivo (portátil, móvil, tablet…) tiene un certificado. Aquí ves si su acceso está activo, caducado o retirado, y puedes darlo de alta, renovarlo o retirarlo.</p></div>
         <button class="btn primary" id="add-btn" onclick="toggleForm(true)">Añadir dispositivo</button>
@@ -226,12 +229,12 @@
       </div>
     </section>
 
-    <section id="conexiones">
+    <section id="conexiones" class="page">
       <div class="sechead"><div><h2>Conexiones activas</h2><p class="hint">Personas que están usando la VPN en este instante.</p></div></div>
       <div class="panel" id="conns"><div class="empty">Cargando…</div></div>
     </section>
 
-    <section id="registros">
+    <section id="registros" class="page">
       <div class="sechead">
         <div><h2>Registros del servidor</h2><p class="hint" id="logs-hint">Últimas líneas del registro del servidor.</p></div>
         <button class="btn" onclick="loadLogs()">Actualizar</button>
@@ -356,6 +359,13 @@ let _cfgSchema = null;
 let _editingServer = false;
 let BACKEND = 'openvpn';
 const api = p => '/api/' + BACKEND + p;
+
+function showPage(id){
+  document.querySelectorAll('main section.page').forEach(s => s.classList.toggle('active', s.id===id));
+  document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('active', a.dataset.page===id));
+  document.querySelector('main').scrollTop = 0;
+  window.scrollTo(0,0);
+}
 
 function setBackend(name){
   if(name === BACKEND) return;
@@ -582,6 +592,7 @@ async function disconnectClient(name){
 }
 
 applyBackend('openvpn');
+showPage('resumen');
 load(); loadLogs();
 setInterval(load, 10000);
 </script>
