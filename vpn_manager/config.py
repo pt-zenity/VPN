@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     secret_key: str = ""
     session_max_age: int = 8 * 3600  # 8 horas
     cookie_secure: bool = False  # poner True detrás de HTTPS
+    # Fichero de usuarios del panel (multiusuario + roles). Si no existe, se siembra
+    # con el admin de arriba.
+    users_file: Path = SANDBOX / "data" / "users.json"
 
     # ── Entrega de configuraciones (guardar en ruta / enviar por correo) ────
     # Directorio base PERMITIDO para guardar configs en el servidor (anti-traversal).

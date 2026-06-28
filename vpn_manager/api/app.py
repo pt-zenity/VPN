@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import auth, delivery
+from .. import auth, delivery, users
 from ..backends.base import (
     AlreadyExists,
     Forbidden,
@@ -52,6 +52,8 @@ _ADMIN_USER, _ADMIN_HASH = auth.resolve_credentials(
     settings.admin_user, settings.admin_password_hash, settings.sandbox
 )
 _throttle = auth.LoginThrottle()
+# Almacén de usuarios del panel (multiusuario + roles); siembra el admin de config.
+_users = users.UserStore(settings.users_file, _ADMIN_USER, _ADMIN_HASH, "admin")
 
 
 def _openvpn() -> OpenVpnBackend:
@@ -87,11 +89,21 @@ def _http(exc: VpnError) -> HTTPException:
 
 
 def require_user(request: Request) -> str:
-    """Dependencia: exige sesión iniciada (401 si no)."""
+    """Dependencia: exige sesión iniciada y que el usuario siga existiendo."""
     user = request.session.get("user")
-    if not user:
+    if not user or not _users.exists(user):
         raise HTTPException(status_code=401, detail="No autenticado")
     return user
+
+
+def require_perm(perm: str):
+    """Factoría de dependencia: exige sesión + un permiso concreto."""
+    def dep(request: Request) -> str:
+        user = require_user(request)
+        if not _users.has_perm(user, perm):
+            raise HTTPException(status_code=403, detail="No tienes permiso para esta acción.")
+        return user
+    return dep
 
 
 class CreateClient(BaseModel):
@@ -190,11 +202,7 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
         return HTMLResponse(
             _render_login("Demasiados intentos. Espera unos minutos."), status_code=429
         )
-    # Evaluar ambos factores sin cortocircuito, para no filtrar por tiempo si el
-    # usuario es correcto o no.
-    user_ok = _user_matches(username)
-    pass_ok = auth.verify_password(password, _ADMIN_HASH)
-    if not (user_ok and pass_ok):
+    if not _users.verify(username, password):
         _throttle.record_failure(ip)
         log.warning("login fallido (usuario=%r) desde %s", username[:32], ip)
         return HTMLResponse(
@@ -202,8 +210,8 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
         )
     _throttle.reset(ip)
     request.session.clear()
-    request.session["user"] = _ADMIN_USER
-    log.info("login correcto (%s) desde %s", _ADMIN_USER, ip)
+    request.session["user"] = username
+    log.info("login correcto (%s) desde %s", username, ip)
     return RedirectResponse("/", status_code=303)
 
 
@@ -220,7 +228,65 @@ def health() -> dict:
 
 @app.get("/api/me", dependencies=_PROTECTED)
 def me(user: str = Depends(require_user)) -> dict:
-    return {"user": user}
+    role = _users.role(user)
+    return {
+        "user": user,
+        "role": role,
+        "role_label": users.ROLE_LABELS.get(role, role),
+        "permissions": sorted(users.role_permissions(role)),
+    }
+
+
+# ── Gestión de usuarios (rol admin) ──────────────────────────────────────────
+class CreateUser(BaseModel):
+    username: str = Field(min_length=2, max_length=32)
+    password: str = Field(min_length=8, max_length=256)
+    role: str
+
+
+class UpdateUser(BaseModel):
+    role: str | None = None
+    password: str | None = Field(default=None, min_length=8, max_length=256)
+
+
+@app.get("/api/users", dependencies=[Depends(require_perm("users:manage"))])
+def users_list() -> dict:
+    return {
+        "users": _users.list(),
+        "roles": [{"id": r, "label": users.ROLE_LABELS[r]} for r in users.ROLES],
+    }
+
+
+@app.post("/api/users", status_code=201)
+def users_create(body: CreateUser, admin: str = Depends(require_perm("users:manage"))) -> dict:
+    try:
+        _users.add(body.username, body.password, body.role)
+    except users.UserError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    log.info("usuario «%s» (rol %s) creado por %s", body.username, body.role, admin)
+    return {"created": body.username}
+
+
+@app.put("/api/users/{username}")
+def users_update(username: str, body: UpdateUser, admin: str = Depends(require_perm("users:manage"))) -> dict:
+    try:
+        _users.update(username, role=body.role, password=body.password)
+    except users.UserError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    log.info("usuario «%s» modificado por %s", username, admin)
+    return {"updated": username}
+
+
+@app.delete("/api/users/{username}")
+def users_delete(username: str, admin: str = Depends(require_perm("users:manage"))) -> dict:
+    if username == admin:
+        raise HTTPException(status_code=422, detail="No puedes borrar tu propia cuenta.")
+    try:
+        _users.delete(username)
+    except users.UserError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    log.info("usuario «%s» borrado por %s", username, admin)
+    return {"deleted": username}
 
 
 # ── Lectura (protegida) ──────────────────────────────────────────────────────
@@ -254,7 +320,7 @@ def openvpn_server_schema() -> dict:
 
 
 @app.put("/api/openvpn/server", response_model=ServerInfo, dependencies=_PROTECTED)
-def openvpn_server_update(body: ServerConfigUpdate, user: str = Depends(require_user)) -> ServerInfo:
+def openvpn_server_update(body: ServerConfigUpdate, user: str = Depends(require_perm("server:write"))) -> ServerInfo:
     try:
         info = _openvpn().update_server_config([(d.key, d.value) for d in body.directives])
     except VpnError as e:
@@ -271,7 +337,7 @@ def openvpn_logs(lines: int = 80) -> dict:
 @app.post(
     "/api/openvpn/service/{action}", response_model=ServiceStatus, dependencies=_PROTECTED
 )
-def openvpn_service_action(action: str, user: str = Depends(require_user)) -> ServiceStatus:
+def openvpn_service_action(action: str, user: str = Depends(require_perm("service:control"))) -> ServiceStatus:
     try:
         status = _openvpn().service_action(action)
     except VpnError as e:
@@ -311,7 +377,7 @@ def wg_server_schema() -> dict:
 
 
 @app.put("/api/wireguard/server", response_model=ServerInfo, dependencies=_PROTECTED)
-def wg_server_update(body: ServerConfigUpdate, user: str = Depends(require_user)) -> ServerInfo:
+def wg_server_update(body: ServerConfigUpdate, user: str = Depends(require_perm("server:write"))) -> ServerInfo:
     try:
         info = _wireguard().update_server_config([(d.key, d.value) for d in body.directives])
     except VpnError as e:
@@ -328,7 +394,7 @@ def wg_logs(lines: int = 80) -> dict:
 @app.post(
     "/api/wireguard/clients", response_model=VpnClient, status_code=201, dependencies=_PROTECTED
 )
-def wg_create(body: CreateClient, user: str = Depends(require_user)) -> VpnClient:
+def wg_create(body: CreateClient, user: str = Depends(require_perm("clients:write"))) -> VpnClient:
     try:
         client = _wireguard().create_client(body.name)
     except VpnError as e:
@@ -340,7 +406,7 @@ def wg_create(body: CreateClient, user: str = Depends(require_user)) -> VpnClien
 @app.post(
     "/api/wireguard/clients/{name}/revoke", response_model=VpnClient, dependencies=_PROTECTED
 )
-def wg_revoke(name: str, user: str = Depends(require_user)) -> VpnClient:
+def wg_revoke(name: str, user: str = Depends(require_perm("clients:write"))) -> VpnClient:
     try:
         client = _wireguard().revoke_client(name)
     except VpnError as e:
@@ -374,19 +440,19 @@ def wg_qr(name: str) -> Response:
 
 
 @app.post("/api/wireguard/clients/{name}/save", dependencies=_PROTECTED)
-def wg_save(name: str, body: SavePath, user: str = Depends(require_user)) -> dict:
+def wg_save(name: str, body: SavePath, user: str = Depends(require_perm("clients:write"))) -> dict:
     return _deliver_save(_wireguard(), name, "conf", body.path, user)
 
 
 @app.post("/api/wireguard/clients/{name}/email", dependencies=_PROTECTED)
-def wg_email(name: str, body: SendEmail, user: str = Depends(require_user)) -> dict:
+def wg_email(name: str, body: SendEmail, user: str = Depends(require_perm("clients:write"))) -> dict:
     return _deliver_email(_wireguard(), name, "conf", body.email, user)
 
 
 @app.post(
     "/api/wireguard/service/{action}", response_model=ServiceStatus, dependencies=_PROTECTED
 )
-def wg_service_action(action: str, user: str = Depends(require_user)) -> ServiceStatus:
+def wg_service_action(action: str, user: str = Depends(require_perm("service:control"))) -> ServiceStatus:
     try:
         status = _wireguard().service_action(action)
     except VpnError as e:
@@ -399,7 +465,7 @@ def wg_service_action(action: str, user: str = Depends(require_user)) -> Service
 @app.post(
     "/api/openvpn/clients", response_model=VpnClient, status_code=201, dependencies=_PROTECTED
 )
-def openvpn_create(body: CreateClient, user: str = Depends(require_user)) -> VpnClient:
+def openvpn_create(body: CreateClient, user: str = Depends(require_perm("clients:write"))) -> VpnClient:
     try:
         client = _openvpn().create_client(body.name)
     except VpnError as e:
@@ -411,7 +477,7 @@ def openvpn_create(body: CreateClient, user: str = Depends(require_user)) -> Vpn
 @app.post(
     "/api/openvpn/clients/{name}/revoke", response_model=VpnClient, dependencies=_PROTECTED
 )
-def openvpn_revoke(name: str, user: str = Depends(require_user)) -> VpnClient:
+def openvpn_revoke(name: str, user: str = Depends(require_perm("clients:write"))) -> VpnClient:
     try:
         client = _openvpn().revoke_client(name)
     except VpnError as e:
@@ -423,7 +489,7 @@ def openvpn_revoke(name: str, user: str = Depends(require_user)) -> VpnClient:
 @app.post(
     "/api/openvpn/clients/{name}/renew", response_model=VpnClient, dependencies=_PROTECTED
 )
-def openvpn_renew(name: str, user: str = Depends(require_user)) -> VpnClient:
+def openvpn_renew(name: str, user: str = Depends(require_perm("clients:write"))) -> VpnClient:
     try:
         client = _openvpn().renew_client(name)
     except VpnError as e:
@@ -435,7 +501,7 @@ def openvpn_renew(name: str, user: str = Depends(require_user)) -> VpnClient:
 @app.post(
     "/api/openvpn/connections/{name}/disconnect", status_code=204, dependencies=_PROTECTED
 )
-def openvpn_disconnect(name: str, user: str = Depends(require_user)) -> Response:
+def openvpn_disconnect(name: str, user: str = Depends(require_perm("clients:write"))) -> Response:
     try:
         _openvpn().disconnect(name)
     except VpnError as e:
@@ -460,23 +526,16 @@ def openvpn_config(name: str) -> Response:
 
 
 @app.post("/api/openvpn/clients/{name}/save", dependencies=_PROTECTED)
-def openvpn_save(name: str, body: SavePath, user: str = Depends(require_user)) -> dict:
+def openvpn_save(name: str, body: SavePath, user: str = Depends(require_perm("clients:write"))) -> dict:
     return _deliver_save(_openvpn(), name, "ovpn", body.path, user)
 
 
 @app.post("/api/openvpn/clients/{name}/email", dependencies=_PROTECTED)
-def openvpn_email(name: str, body: SendEmail, user: str = Depends(require_user)) -> dict:
+def openvpn_email(name: str, body: SendEmail, user: str = Depends(require_perm("clients:write"))) -> dict:
     return _deliver_email(_openvpn(), name, "ovpn", body.email, user)
 
 
 # ── Utilidades ───────────────────────────────────────────────────────────────
-def _user_matches(username: str) -> bool:
-    """Comparación de usuario en tiempo constante."""
-    import hmac
-
-    return hmac.compare_digest(username or "", _ADMIN_USER)
-
-
 def _render_login(error: str = "") -> str:
     html = (_UI / "login.html").read_text(encoding="utf-8")
     block = (

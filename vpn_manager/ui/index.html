@@ -47,6 +47,10 @@
   .side .switch button.on{background:#33433f;color:#fff}
   .side .switch button[disabled]{opacity:.5;cursor:not-allowed}
   .side .foot{margin-top:auto;padding-top:16px}
+  .me-chip{display:flex;flex-direction:column;gap:1px;padding:9px 12px;margin-bottom:8px;
+    background:#243330;border-radius:10px}
+  .me-chip .me-u{font-size:13px;font-weight:600;color:#fff}
+  .me-chip .me-r{font-size:11.5px;color:#8a9893}
   .side .logout{width:100%;border:1px solid #33433f;background:transparent;color:var(--sidebar-ink);
     font:inherit;font-size:13.5px;font-weight:500;padding:9px;border-radius:10px;cursor:pointer}
   .side .logout:hover{background:var(--sidebar-active);color:#fff}
@@ -168,12 +172,14 @@
       <a data-page="clientes" onclick="showPage('clientes')">Dispositivos <span class="n" id="nav-clients">·</span></a>
       <a data-page="conexiones" onclick="showPage('conexiones')">Conexiones <span class="n" id="nav-conns">·</span></a>
       <a data-page="registros" onclick="showPage('registros')">Registros</a>
+      <a data-page="usuarios" id="nav-usuarios" onclick="showPage('usuarios')" style="display:none">Usuarios</a>
     </nav>
     <div class="switch" id="backend-switch">
       <button class="on" data-b="openvpn" onclick="setBackend('openvpn')">OpenVPN</button>
       <button data-b="wireguard" onclick="setBackend('wireguard')">WireGuard</button>
     </div>
     <div class="foot">
+      <div class="me-chip" id="me-chip" style="display:none"><span class="me-u" id="me-user">—</span><span class="me-r" id="me-role"></span></div>
       <form method="post" action="/logout"><button class="logout" type="submit">Cerrar sesión</button></form>
     </div>
   </aside>
@@ -240,6 +246,24 @@
         <button class="btn" onclick="loadLogs()">Actualizar</button>
       </div>
       <div class="panel"><pre class="logbox" id="logs">Cargando…</pre></div>
+    </section>
+
+    <section id="usuarios" class="page">
+      <div class="sechead">
+        <div><h2>Usuarios del panel</h2><p class="hint">Quién puede entrar al panel y con qué permisos. <b>Administrador</b>: todo. <b>Operador</b>: gestiona dispositivos y el servicio. <b>Solo lectura</b>: solo consulta.</p></div>
+        <button class="btn primary" id="user-add-btn" onclick="toggleUserForm(true)">Añadir usuario</button>
+      </div>
+      <div class="panel">
+        <div class="addform" id="user-form">
+          <input id="u-name" type="text" placeholder="Usuario (p. ej. ana)" maxlength="32" autocomplete="off">
+          <input id="u-pass" type="password" placeholder="Contraseña (mín. 8)" maxlength="256" autocomplete="new-password">
+          <select id="u-role" style="font:inherit;font-size:15px;padding:9px 12px;border:1px solid var(--line-strong);border-radius:10px;background:#fff"></select>
+          <button class="btn primary" onclick="createUser()">Crear</button>
+          <button class="btn" onclick="toggleUserForm(false)">Cancelar</button>
+        </div>
+        <div class="formhint" id="u-hint" style="display:none"></div>
+        <div id="users"><div class="empty">Cargando…</div></div>
+      </div>
     </section>
    </div>
   </main>
@@ -325,6 +349,7 @@ function renderService(st){
   tg.textContent = st.active?'Parar':'Arrancar';
   tg.classList.toggle('danger', st.active);
   tg.classList.toggle('primary', !st.active);
+  const grp=document.querySelector('#servicio .grp'); if(grp) grp.style.display = can('service:control') ? '' : 'none';
 }
 
 function renderServer(sv){
@@ -365,6 +390,85 @@ function showPage(id){
   document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('active', a.dataset.page===id));
   document.querySelector('main').scrollTop = 0;
   window.scrollTo(0,0);
+  if(id==='usuarios') loadUsers();
+}
+
+// ── Permisos / usuario actual ──
+let _me = {permissions:[]};
+const can = p => Array.isArray(_me.permissions) && _me.permissions.includes(p);
+
+async function loadMe(){
+  try{ _me = await fetch('/api/me').then(r=>r.json()); }catch(e){ _me={permissions:[]}; }
+  const chip=document.getElementById('me-chip');
+  chip.style.display=''; document.getElementById('me-user').textContent=_me.user||'—';
+  document.getElementById('me-role').textContent=_me.role_label||'';
+  document.getElementById('nav-usuarios').style.display = can('users:manage') ? '' : 'none';
+  applyPerms();
+}
+function applyPerms(){
+  const ab=document.getElementById('add-btn'); if(ab) ab.style.display = can('clients:write') ? '' : 'none';
+  const eb=document.getElementById('cfg-edit-btn'); if(eb) eb.style.display = can('server:write') ? '' : 'none';
+}
+
+// ── Gestión de usuarios ──
+async function loadUsers(){
+  if(!can('users:manage')) return;
+  try{
+    const d = await fetch('/api/users').then(r=>r.json());
+    const sel=document.getElementById('u-role');
+    if(sel && !sel.options.length) sel.innerHTML=d.roles.map(r=>`<option value="${r.id}">${esc(r.label)}</option>`).join('');
+    document.getElementById('users').innerHTML = d.users.map(u=>{
+      const isMe = u.username===_me.user;
+      return `<div class="row"><div><div class="name">${esc(u.username)}${isMe?' <span class="sub">(tú)</span>':''}</div>
+        <div class="meta">${esc(u.role_label)}</div></div>
+        <div class="right"><div class="actions">
+          <button class="act" onclick="changeRole('${esc(u.username)}','${u.role}')">Cambiar rol</button>
+          <button class="act" onclick="resetPass('${esc(u.username)}')">Cambiar contraseña</button>
+          ${isMe?'':`<button class="act danger" onclick="deleteUser('${esc(u.username)}')">Borrar</button>`}
+        </div></div></div>`;
+    }).join('');
+  }catch(e){ document.getElementById('users').innerHTML='<div class="err">No se pudieron cargar los usuarios.</div>'; }
+}
+function toggleUserForm(open){ document.getElementById('user-form').classList.toggle('open',open); document.getElementById('user-add-btn').style.visibility=open?'hidden':'visible'; uhint(''); }
+function uhint(m,bad){ const h=document.getElementById('u-hint'); h.textContent=m; h.className='formhint'+(bad?' bad':''); h.style.display=m?'block':'none'; }
+async function createUser(){
+  const username=document.getElementById('u-name').value.trim();
+  const password=document.getElementById('u-pass').value;
+  const role=document.getElementById('u-role').value;
+  if(!username||!password){ uhint('Rellena usuario y contraseña.',true); return; }
+  try{
+    const r=await fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,role})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){ uhint(d.detail||'No se pudo crear.',true); return; }
+    document.getElementById('u-name').value=''; document.getElementById('u-pass').value='';
+    toggleUserForm(false); toast('Usuario creado ✓'); loadUsers();
+  }catch(e){ uhint('No se pudo conectar.',true); }
+}
+async function changeRole(username, current){
+  const role=prompt(`Nuevo rol para «${username}» (admin / operator / viewer):`, current);
+  if(!role) return;
+  try{
+    const r=await fetch('/api/users/'+encodeURIComponent(username),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:role.trim()})});
+    const d=await r.json().catch(()=>({})); if(!r.ok){ toast(d.detail||'No se pudo cambiar.'); return; }
+    toast('Rol actualizado ✓'); loadUsers();
+  }catch(e){ toast('No se pudo conectar.'); }
+}
+async function resetPass(username){
+  const password=prompt(`Nueva contraseña para «${username}» (mín. 8):`,'');
+  if(!password) return;
+  try{
+    const r=await fetch('/api/users/'+encodeURIComponent(username),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
+    const d=await r.json().catch(()=>({})); if(!r.ok){ toast(d.detail||'No se pudo cambiar.'); return; }
+    toast('Contraseña actualizada ✓');
+  }catch(e){ toast('No se pudo conectar.'); }
+}
+async function deleteUser(username){
+  if(!confirm(`¿Borrar al usuario «${username}»? Dejará de poder entrar al panel.`)) return;
+  try{
+    const r=await fetch('/api/users/'+encodeURIComponent(username),{method:'DELETE'});
+    const d=await r.json().catch(()=>({})); if(!r.ok){ toast(d.detail||'No se pudo borrar.'); return; }
+    toast('Usuario borrado ✓'); loadUsers();
+  }catch(e){ toast('No se pudo conectar.'); }
 }
 
 function setBackend(name){
@@ -484,16 +588,16 @@ function renderClients(cl){
       : (c.status==='expired'&&c.expires_at ? 'Caducó el '+fmtDate(c.expires_at) : '');
     const n=esc(c.name);
     const enc=encodeURIComponent(c.name);
+    const w = can('clients:write');
     let actions='';
     if(c.status==='valid'){
       const qr = BACKEND==='wireguard' ? `<a class="act" href="${api('/clients/'+enc+'/qr')}" target="_blank">Código QR</a>` : '';
-      actions=`<div class="actions">
-        <a class="act" href="${api('/clients/'+enc+'/config')}" download>Descargar</a>
-        ${qr}
-        <button class="act" onclick="saveConfig('${n}')">Guardar en servidor</button>
+      const wr = w ? `<button class="act" onclick="saveConfig('${n}')">Guardar en servidor</button>
         <button class="act" onclick="emailConfig('${n}')">Enviar por correo</button>
-        <button class="act danger" onclick="revokeClient('${n}')">Retirar acceso</button></div>`;
-    } else if(c.status==='expired'){
+        <button class="act danger" onclick="revokeClient('${n}')">Retirar acceso</button>` : '';
+      actions=`<div class="actions">
+        <a class="act" href="${api('/clients/'+enc+'/config')}" download>Descargar</a>${qr}${wr}</div>`;
+    } else if(c.status==='expired' && w){
       actions=`<div class="actions"><button class="act" onclick="renewClient('${n}')">Renovar acceso</button></div>`;
     }
     return `<div class="row"><div><div class="name">${n}</div>${caduca?`<div class="meta">${caduca}</div>`:''}${actions}</div>
@@ -504,7 +608,7 @@ function renderClients(cl){
 function renderConns(cn){
   document.getElementById('conns').innerHTML = cn.length ? cn.map(c=>{
     const n=esc(c.name);
-    const disc = BACKEND==='openvpn' ? `<div class="actions"><button class="act danger" onclick="disconnectClient('${n}')">Desconectar</button></div>` : '';
+    const disc = (BACKEND==='openvpn' && can('clients:write')) ? `<div class="actions"><button class="act danger" onclick="disconnectClient('${n}')">Desconectar</button></div>` : '';
     return `<div class="row"><div><div class="name">${n}</div>
       <div class="meta">Dirección en la red: ${esc(c.virtual_address)||'—'} · ${esc(c.real_address)||'—'}</div>
       ${disc}</div>
@@ -596,9 +700,12 @@ async function disconnectClient(name){
   }catch(e){ toast('No se pudo conectar con el servidor.'); }
 }
 
-applyBackend('openvpn');
-showPage('resumen');
-load(); loadLogs();
+(async () => {
+  await loadMe();
+  applyBackend('openvpn');
+  showPage('resumen');
+  load(); loadLogs();
+})();
 setInterval(load, 10000);
 </script>
 </body>

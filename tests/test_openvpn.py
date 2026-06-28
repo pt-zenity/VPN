@@ -364,6 +364,81 @@ class TestWireGuardApi:
         assert r.status_code == 422
 
 
+class TestUserStore:
+    def _store(self, tmp_path):
+        from vpn_manager.auth import hash_password
+        from vpn_manager.users import UserStore
+        return UserStore(tmp_path / "users.json", "admin", hash_password("admin123"), "admin")
+
+    def test_alta_verificacion_y_permisos(self, tmp_path):
+        s = self._store(tmp_path)
+        assert s.verify("admin", "admin123") and not s.verify("admin", "malo")
+        assert not s.verify("fantasma", "x")  # usuario inexistente
+        s.add("ana", "operario1", "operator")
+        assert s.verify("ana", "operario1")
+        assert s.has_perm("ana", "clients:write")
+        assert not s.has_perm("ana", "users:manage")
+        assert (tmp_path / "users.json").exists()  # se persistió
+
+    def test_validaciones(self, tmp_path):
+        from vpn_manager.users import UserError
+        s = self._store(tmp_path)
+        with pytest.raises(UserError):
+            s.add(" x", "12345678", "viewer")  # nombre inválido
+        with pytest.raises(UserError):
+            s.add("bob", "corta", "viewer")    # contraseña corta
+        with pytest.raises(UserError):
+            s.add("bob", "12345678", "jefe")   # rol inexistente
+
+    def test_no_se_queda_sin_admin(self, tmp_path):
+        from vpn_manager.users import UserError
+        s = self._store(tmp_path)
+        with pytest.raises(UserError):
+            s.update("admin", role="viewer")   # es el último admin
+        with pytest.raises(UserError):
+            s.delete("admin")
+
+
+class TestRolesApi:
+    @pytest.fixture(autouse=True)
+    def _store(self, tmp_path, monkeypatch):
+        import vpn_manager.api.app as appmod
+        from vpn_manager.auth import hash_password
+        from vpn_manager.users import UserStore
+        store = UserStore(tmp_path / "users.json", "admin", hash_password("admin123"), "admin")
+        store.add("oper", "operario1", "operator")
+        store.add("visor", "visor1234", "viewer")
+        monkeypatch.setattr(appmod, "_users", store)
+
+    def _login(self, u, p):
+        c = TestClient(app)
+        assert c.post("/login", data={"username": u, "password": p}).status_code == 200
+        return c
+
+    def test_me_incluye_rol_y_permisos(self):
+        d = self._login("oper", "operario1").get("/api/me").json()
+        assert d["role"] == "operator" and "clients:write" in d["permissions"]
+
+    def test_operador_no_gestiona_usuarios_ni_edita_servidor(self):
+        c = self._login("oper", "operario1")
+        assert c.get("/api/openvpn/clients").status_code == 200      # lectura OK
+        assert c.get("/api/users").status_code == 403                # no admin
+        assert c.put("/api/openvpn/server", json={"directives": []}).status_code == 403
+
+    def test_visor_es_solo_lectura(self):
+        c = self._login("visor", "visor1234")
+        assert c.get("/api/openvpn/clients").status_code == 200
+        assert c.post("/api/openvpn/clients", json={"name": "x"}).status_code == 403
+        assert c.post("/api/openvpn/service/restart").status_code == 403
+
+    def test_admin_gestiona_usuarios(self):
+        c = self._login("admin", "admin123")
+        assert len(c.get("/api/users").json()["users"]) == 3
+        assert c.post("/api/users", json={"username": "nuevo", "password": "clave1234", "role": "viewer"}).status_code == 201
+        assert c.delete("/api/users/oper").status_code == 200
+        assert c.delete("/api/users/admin").status_code == 422       # no a sí mismo
+
+
 class TestDelivery:
     def test_guardar_dentro_del_base(self, tmp_path):
         from vpn_manager.delivery import save_to_server

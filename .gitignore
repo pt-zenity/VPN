@@ -36,3 +36,6 @@ sandbox/runtime/
 
 # Configs exportadas / outbox de correo (sandbox)
 sandbox/exports/
+
+# Almacén de usuarios del panel (local)
+sandbox/data/
