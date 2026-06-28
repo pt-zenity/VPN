@@ -66,8 +66,9 @@ y fija `VPNM_SECRET_KEY`.
 ## Tests
 
 ```bash
-pytest -q        # 21 pruebas (parsers, API, alta/revocación, validación)
+pytest -q                              # pruebas unitarias/integración (parsers, API, auth, roles…)
 ruff check .
+pip install -e ".[e2e]" && pytest e2e/ # e2e de la interfaz en navegador (Playwright)
 ```
 
 ## API

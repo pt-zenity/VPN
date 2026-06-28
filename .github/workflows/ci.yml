@@ -27,6 +27,21 @@ jobs:
       - name: Tests (pytest)
         run: pytest -q
 
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Instalar dependencias + navegador
+        run: |
+          pip install -e ".[e2e]"
+          python -m playwright install --with-deps chromium
+      - name: Tests e2e de la interfaz (Playwright)
+        run: pytest e2e/ -q
+
   audit:
     runs-on: ubuntu-latest
     steps:

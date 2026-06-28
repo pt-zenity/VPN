@@ -19,6 +19,10 @@ dev = [
     "httpx>=0.27",
     "ruff>=0.6",
 ]
+e2e = [
+    "pytest>=7.4",
+    "pytest-playwright>=0.5",
+]
 
 [tool.setuptools.packages.find]
 include = ["vpn_manager*"]
