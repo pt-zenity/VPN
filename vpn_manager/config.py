@@ -63,13 +63,26 @@ class Settings(BaseSettings):
     allow_install: bool = False
 
     # ── Instalación «llave en mano» (scripts de angristan, pineados + verificados) ──
-    # Para activarla: fija un COMMIT concreto en la URL y su SHA-256 (cómputo:
-    # `curl -sL <url> | sha256sum`). Sin checksum NO se ejecuta (fail-closed).
+    # Defaults FIJADOS a un commit concreto de angristan con su SHA-256 (opción A:
+    # pineado + verificado). Antes de ejecutar, el panel descarga la URL y comprueba
+    # el hash; si no coincide, NO se ejecuta (fail-closed). Para re-pinear a otro
+    # commit, cambia URL + SHA-256 vía VPNM_BOOTSTRAP_* (cómputo: `curl -sL <url> | sha256sum`).
+    # Commits pineados el 2026-06-28 (revisar/actualizar periódicamente).
     bootstrap_dir: Path = SANDBOX / "data" / "bootstrap"
-    bootstrap_openvpn_url: str = ""
-    bootstrap_openvpn_sha256: str = ""
-    bootstrap_wireguard_url: str = ""
-    bootstrap_wireguard_sha256: str = ""
+    bootstrap_openvpn_url: str = (
+        "https://raw.githubusercontent.com/angristan/openvpn-install/"
+        "935e5591e1de09d95251afd18ab7fe85685e6905/openvpn-install.sh"
+    )
+    bootstrap_openvpn_sha256: str = (
+        "660a848735ca533c8cec07ae38594e42b3854a6f44c1f264f45de5149d1ef9ed"
+    )
+    bootstrap_wireguard_url: str = (
+        "https://raw.githubusercontent.com/angristan/wireguard-install/"
+        "832fb9833501a7220e2900cffb61082841dedba8/wireguard-install.sh"
+    )
+    bootstrap_wireguard_sha256: str = (
+        "e5729fa20d6cc48e1de7616427762bbfde905eb3c806fef5810d71dc65bd681c"
+    )
 
     # ── Entrega de configuraciones (guardar en ruta / enviar por correo) ────
     # Directorio base PERMITIDO para guardar configs en el servidor (anti-traversal).

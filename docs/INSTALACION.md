@@ -86,9 +86,12 @@ Copia `.env.example` a `.env` y ajusta. Todas las variables llevan prefijo `VPNM
 | Variable | Por defecto | Descripción |
 |----------|-------------|-------------|
 | `VPNM_ALLOW_INSTALL` | `false` | Interruptor de seguridad. `true` para permitir instalar (además, el panel debe correr como **root**). |
-| `VPNM_BOOTSTRAP_OPENVPN_URL` | *(vacío)* | URL del script de angristan **fijada a un commit** (`…/<COMMIT>/openvpn-install.sh`). |
-| `VPNM_BOOTSTRAP_OPENVPN_SHA256` | *(vacío)* | SHA-256 de ese script. **Sin él no se ejecuta.** Cómputo: `curl -sL <url> \| sha256sum`. |
-| `VPNM_BOOTSTRAP_WIREGUARD_URL` / `_SHA256` | *(vacío)* | Igual para WireGuard (`angristan/wireguard-install`). |
+| `VPNM_BOOTSTRAP_OPENVPN_URL` | *(pineado a commit `935e559…`)* | URL del script de angristan **fijada a un commit** (`…/<COMMIT>/openvpn-install.sh`). |
+| `VPNM_BOOTSTRAP_OPENVPN_SHA256` | *(pineado)* | SHA-256 de ese script. **Sin él no se ejecuta.** Re-pinear: `curl -sL <url> \| sha256sum`. |
+| `VPNM_BOOTSTRAP_WIREGUARD_URL` / `_SHA256` | *(pineado a `832fb98…`)* | Igual para WireGuard (`angristan/wireguard-install`). |
+
+> Los defaults vienen **pineados a un commit concreto de angristan + su SHA-256** (verificados
+> el 2026-06-28). Para usar otra versión, sobrescribe URL **y** hash con `VPNM_BOOTSTRAP_*`.
 
 - **Instalar paquetes**: detecta la distro (apt/dnf/yum/pacman/zypper) e instala los
   paquetes. En RHEL/derivados añade EPEL para OpenVPN.
