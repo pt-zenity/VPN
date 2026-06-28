@@ -49,17 +49,26 @@ def attach(logger_name: str, path: Path) -> JsonlAuditHandler:
     return handler
 
 
-def recent(path: Path, limit: int = 100) -> list[dict]:
-    """Últimas `limit` entradas, de la más reciente a la más antigua."""
+def recent(
+    path: Path, limit: int = 100, query: str | None = None, level: str | None = None
+) -> list[dict]:
+    """Últimas `limit` entradas (filtradas), de la más reciente a la más antigua."""
     path = Path(path)
     if not path.exists():
         return []
-    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    out: list[dict] = []
-    for line in lines[-limit:]:
+    q = (query or "").strip().lower()
+    lvl = (level or "").strip().upper()
+    matched: list[dict] = []
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         try:
-            out.append(json.loads(line))
+            entry = json.loads(line)
         except ValueError:
             continue
-    out.reverse()
-    return out
+        if lvl and entry.get("level", "").upper() != lvl:
+            continue
+        if q and q not in entry.get("message", "").lower():
+            continue
+        matched.append(entry)
+    matched = matched[-limit:]
+    matched.reverse()
+    return matched

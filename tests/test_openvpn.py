@@ -549,6 +549,19 @@ class TestAudit:
         from vpn_manager.audit import recent
         assert recent(tmp_path / "no.jsonl") == []
 
+    def test_filtros_busqueda_y_nivel(self, tmp_path):
+        import logging
+        from vpn_manager.audit import attach, recent
+        path = tmp_path / "audit.jsonl"
+        attach("vpn_manager.audit.test2", path)
+        lg = logging.getLogger("vpn_manager.audit.test2")
+        lg.info("alta de «ana» por admin")
+        lg.warning("login fallido (usuario='root')")
+        lg.info("revocación de «bob» por ana")
+        assert len(recent(path, query="ana")) == 2          # busca «ana» en el texto
+        assert len(recent(path, level="WARNING")) == 1       # solo avisos
+        assert recent(path, query="login")[0]["level"] == "WARNING"
+
 
 class TestBootstrap:
     def _settings(self, tmp_path, url="", sha="", allow=False, sandbox=True):

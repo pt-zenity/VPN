@@ -275,7 +275,14 @@
     <section id="actividad" class="page">
       <div class="sechead">
         <div><h2>Actividad</h2><p class="hint">Registro de acciones del panel: inicios de sesión, altas y bajas de dispositivos, cambios de configuración y de usuarios, instalaciones…</p></div>
-        <button class="btn" onclick="loadAudit()">Actualizar</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="audit-q" type="text" placeholder="Buscar (usuario, acción…)" oninput="auditFilter()"
+            style="font:inherit;font-size:14px;padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;width:220px">
+          <select id="audit-level" onchange="loadAudit()" style="font:inherit;font-size:14px;padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;background:#fff">
+            <option value="">Todos</option><option value="INFO">Info</option><option value="WARNING">Avisos</option>
+          </select>
+          <button class="btn" onclick="loadAudit()">Actualizar</button>
+        </div>
       </div>
       <div class="panel" id="audit"><div class="empty">Cargando…</div></div>
     </section>
@@ -468,12 +475,16 @@ async function disable2fa(){
   }catch(e){ toast('No se pudo conectar.'); }
 }
 
+let _auditTimer=null;
+function auditFilter(){ clearTimeout(_auditTimer); _auditTimer=setTimeout(loadAudit,300); }
 async function loadAudit(){
   if(!can('audit:read')) return;
   try{
-    const d = await fetch('/api/audit?limit=200').then(r=>r.json());
+    const q = encodeURIComponent((document.getElementById('audit-q')||{}).value||'');
+    const lvl = (document.getElementById('audit-level')||{}).value||'';
+    const d = await fetch(`/api/audit?limit=300&q=${q}&level=${lvl}`).then(r=>r.json());
     const box = document.getElementById('audit');
-    if(!d.entries || !d.entries.length){ box.innerHTML='<div class="empty">Sin actividad registrada todavía.</div>'; return; }
+    if(!d.entries || !d.entries.length){ box.innerHTML='<div class="empty">Sin resultados para el filtro.</div>'; return; }
     box.innerHTML = d.entries.map(e=>{
       const warn = e.level && e.level!=='INFO';
       const t = e.ts ? new Date(e.ts).toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '';

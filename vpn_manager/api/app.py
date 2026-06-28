@@ -318,8 +318,8 @@ class UpdateUser(BaseModel):
 
 
 @app.get("/api/audit", dependencies=[Depends(require_perm("audit:read"))])
-def audit_log(limit: int = 100) -> dict:
-    return {"entries": audit.recent(settings.audit_file, max(1, min(limit, 500)))}
+def audit_log(limit: int = 200, q: str = "", level: str = "") -> dict:
+    return {"entries": audit.recent(settings.audit_file, max(1, min(limit, 1000)), q, level)}
 
 
 @app.get("/api/users", dependencies=[Depends(require_perm("users:manage"))])
