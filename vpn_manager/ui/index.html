@@ -166,9 +166,9 @@
       <a href="#conexiones">Conexiones <span class="n" id="nav-conns">·</span></a>
       <a href="#registros">Registros</a>
     </nav>
-    <div class="switch">
-      <button class="on">OpenVPN</button>
-      <button disabled title="Disponible próximamente">WireGuard</button>
+    <div class="switch" id="backend-switch">
+      <button class="on" data-b="openvpn" onclick="setBackend('openvpn')">OpenVPN</button>
+      <button data-b="wireguard" onclick="setBackend('wireguard')">WireGuard</button>
     </div>
     <div class="foot">
       <form method="post" action="/logout"><button class="logout" type="submit">Cerrar sesión</button></form>
@@ -191,7 +191,7 @@
     </section>
 
     <section id="servicio">
-      <div class="sechead"><div><h2>Servicio</h2><p class="hint">Controla el servidor OpenVPN. «Recargar» relee la configuración sin cortar a los conectados; «Reiniciar» los desconecta un instante.</p></div></div>
+      <div class="sechead"><div><h2>Servicio</h2><p class="hint" id="svc-hint">Controla el servidor. «Recargar» relee la configuración sin cortar a los conectados; «Reiniciar» los desconecta un instante.</p></div></div>
       <div class="panel"><div class="controls">
         <span class="state" id="svc-state"><span class="dot idle"></span>—</span>
         <div class="grp">
@@ -204,7 +204,7 @@
 
     <section id="servidor">
       <div class="sechead">
-        <div><h2>Configuración del servidor</h2><p class="hint">Parámetros con los que está funcionando el servidor OpenVPN. Puedes editarlos.</p></div>
+        <div><h2>Configuración del servidor</h2><p class="hint" id="cfg-hint">Parámetros con los que está funcionando el servidor. Puedes editarlos.</p></div>
         <button class="btn" id="cfg-edit-btn" onclick="editServer()">Editar configuración</button>
       </div>
       <div class="panel"><div id="server-info"><div class="empty">Cargando…</div></div></div>
@@ -233,7 +233,7 @@
 
     <section id="registros">
       <div class="sechead">
-        <div><h2>Registros del servidor</h2><p class="hint">Últimas líneas del registro de OpenVPN.</p></div>
+        <div><h2>Registros del servidor</h2><p class="hint" id="logs-hint">Últimas líneas del registro del servidor.</p></div>
         <button class="btn" onclick="loadLogs()">Actualizar</button>
       </div>
       <div class="panel"><pre class="logbox" id="logs">Cargando…</pre></div>
@@ -279,6 +279,12 @@ function applyBackend(name){
   document.getElementById('backend-logo').innerHTML = b.logo;
   document.getElementById('backend-name').textContent = b.name;
   document.title = 'VPN Manager — ' + b.name;
+  const sh = document.getElementById('svc-hint');
+  if(sh) sh.textContent = `Controla el servidor ${b.name}. «Recargar» relee la configuración sin cortar a los conectados; «Reiniciar» los desconecta un instante.`;
+  const ch = document.getElementById('cfg-hint');
+  if(ch) ch.textContent = `Parámetros con los que está funcionando el servidor ${b.name}.` + (name==='openvpn' ? ' Puedes editarlos.' : '');
+  const lh = document.getElementById('logs-hint');
+  if(lh) lh.textContent = `Últimas líneas del registro de ${b.name}.`;
 }
 
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
@@ -286,10 +292,10 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 async function load(){
   try{
     const [st, cl, cn, sv] = await Promise.all([
-      fetch('/api/openvpn/status').then(r=>r.json()),
-      fetch('/api/openvpn/clients').then(r=>r.json()),
-      fetch('/api/openvpn/connections').then(r=>r.json()),
-      fetch('/api/openvpn/server').then(r=>r.json()),
+      fetch(api('/status')).then(r=>r.json()),
+      fetch(api('/clients')).then(r=>r.json()),
+      fetch(api('/connections')).then(r=>r.json()),
+      fetch(api('/server')).then(r=>r.json()),
     ]);
     renderService(st);
     renderServer(sv);
@@ -348,6 +354,19 @@ function renderServer(sv){
 let _serverInfo = null;
 let _cfgSchema = null;
 let _editingServer = false;
+let BACKEND = 'openvpn';
+const api = p => '/api/' + BACKEND + p;
+
+function setBackend(name){
+  if(name === BACKEND) return;
+  BACKEND = name;
+  _editingServer = false; _serverInfo = null; _cfgSchema = null;
+  document.querySelectorAll('#backend-switch button').forEach(b =>
+    b.classList.toggle('on', b.dataset.b === name));
+  document.getElementById('server-info').innerHTML = '<div class="empty">Cargando…</div>';
+  document.getElementById('cfg-edit-btn').style.display = (name === 'openvpn') ? '' : 'none';
+  load(); loadLogs();
+}
 
 function renderServerView(){
   document.getElementById('cfg-edit-btn').style.display = '';
@@ -356,7 +375,7 @@ function renderServerView(){
 // ── Edición de la configuración del servidor ──
 async function editServer(){
   if(!_cfgSchema){
-    try{ _cfgSchema = (await fetch('/api/openvpn/server/schema').then(r=>r.json())).fields; }
+    try{ _cfgSchema = (await fetch(api('/server/schema')).then(r=>r.json())).fields; }
     catch(e){ toast('No se pudo cargar el formulario.'); return; }
   }
   document.getElementById('cfg-edit-btn').style.display = 'none';
@@ -423,7 +442,7 @@ async function saveServer(){
     if(k) directives.push({key:k, value:v});
   });
   try{
-    const r = await fetch('/api/openvpn/server',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({directives})});
+    const r = await fetch(api('/server'),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({directives})});
     const d = await r.json().catch(()=>({}));
     if(!r.ok){ toast(d.detail||'No se pudo guardar la configuración.'); return; }
     _serverInfo = d;
@@ -449,14 +468,19 @@ function renderClients(cl){
     const caduca = c.status==='valid'&&c.expires_at ? 'Caduca el '+fmtDate(c.expires_at)
       : (c.status==='expired'&&c.expires_at ? 'Caducó el '+fmtDate(c.expires_at) : '');
     const n=esc(c.name);
+    const enc=encodeURIComponent(c.name);
     let actions='';
-    if(c.status==='valid') actions=`<div class="actions">
-        <a class="act" href="/api/openvpn/clients/${encodeURIComponent(c.name)}/config" download>Descargar</a>
+    if(c.status==='valid'){
+      const qr = BACKEND==='wireguard' ? `<a class="act" href="${api('/clients/'+enc+'/qr')}" target="_blank">Código QR</a>` : '';
+      actions=`<div class="actions">
+        <a class="act" href="${api('/clients/'+enc+'/config')}" download>Descargar</a>
+        ${qr}
         <button class="act" onclick="saveConfig('${n}')">Guardar en servidor</button>
         <button class="act" onclick="emailConfig('${n}')">Enviar por correo</button>
         <button class="act danger" onclick="revokeClient('${n}')">Retirar acceso</button></div>`;
-    else if(c.status==='expired') actions=`<div class="actions">
-        <button class="act" onclick="renewClient('${n}')">Renovar acceso</button></div>`;
+    } else if(c.status==='expired'){
+      actions=`<div class="actions"><button class="act" onclick="renewClient('${n}')">Renovar acceso</button></div>`;
+    }
     return `<div class="row"><div><div class="name">${n}</div>${caduca?`<div class="meta">${caduca}</div>`:''}${actions}</div>
       <div class="right"><span class="state ${s.cls}"><span class="dot ${s.dot}"></span>${s.label}</span></div></div>`;
   }).join('') : `<div class="empty">Todavía no hay nadie con acceso.</div>`;
@@ -465,9 +489,10 @@ function renderClients(cl){
 function renderConns(cn){
   document.getElementById('conns').innerHTML = cn.length ? cn.map(c=>{
     const n=esc(c.name);
+    const disc = BACKEND==='openvpn' ? `<div class="actions"><button class="act danger" onclick="disconnectClient('${n}')">Desconectar</button></div>` : '';
     return `<div class="row"><div><div class="name">${n}</div>
       <div class="meta">Dirección en la red: ${esc(c.virtual_address)||'—'} · ${esc(c.real_address)||'—'}</div>
-      <div class="actions"><button class="act danger" onclick="disconnectClient('${n}')">Desconectar</button></div></div>
+      ${disc}</div>
       <div class="right"><span class="state s-ok"><span class="dot ok"></span>Conectado · ${since(c.connected_since)}</span>
       <span class="sub">↓ ${fmtBytes(c.bytes_received)}  ·  ↑ ${fmtBytes(c.bytes_sent)}</span></div></div>`;
   }).join('') : `<div class="empty">Ahora mismo no hay nadie conectado.</div>`;
@@ -475,7 +500,7 @@ function renderConns(cn){
 
 async function loadLogs(){
   try{
-    const d = await fetch('/api/openvpn/logs').then(r=>r.json());
+    const d = await fetch(api('/logs')).then(r=>r.json());
     const box = document.getElementById('logs');
     if(!d.lines || !d.lines.length){ box.textContent='(sin registros disponibles)'; return; }
     box.innerHTML = d.lines.map(l=>{
@@ -491,7 +516,7 @@ async function svcAction(action){
   const labels={reload:'recargar',restart:'reiniciar',stop:'parar',start:'arrancar'};
   if((action==='stop'||action==='restart') && !confirm(`¿Seguro que quieres ${labels[action]} la VPN?${action!=='reload'?'\n\nLos usuarios conectados se desconectarán.':''}`)) return;
   try{
-    const r = await fetch('/api/openvpn/service/'+action,{method:'POST'});
+    const r = await fetch(api('/service/'+action),{method:'POST'});
     if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo completar la acción.'); return; }
     toast('Servicio: '+labels[action]+' ✓');
     await load();
@@ -507,7 +532,7 @@ async function createClient(){
   if(!name){ hint('Escribe un nombre para identificar a la persona o dispositivo.',true); return; }
   hint('Creando acceso…');
   try{
-    const r=await fetch('/api/openvpn/clients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const r=await fetch(api('/clients'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
     if(!r.ok){ const d=await r.json().catch(()=>({})); hint(d.detail||'No se pudo crear el acceso.',true); return; }
     input.value=''; toggleForm(false); toast('Acceso creado ✓'); await load();
   }catch(e){ hint('No se pudo conectar con el servidor.',true); }
@@ -515,7 +540,7 @@ async function createClient(){
 async function revokeClient(name){
   if(!confirm(`¿Seguro que quieres retirar el acceso de «${name}»?\n\nDejará de poder conectarse. Esta acción no se puede deshacer.`)) return;
   try{
-    const r=await fetch(`/api/openvpn/clients/${encodeURIComponent(name)}/revoke`,{method:'POST'});
+    const r=await fetch(api(`/clients/${encodeURIComponent(name)}/revoke`),{method:'POST'});
     if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo retirar el acceso.'); return; }
     toast('Acceso retirado ✓'); await load();
   }catch(e){ toast('No se pudo conectar con el servidor.'); }
@@ -524,7 +549,7 @@ async function saveConfig(name){
   const path = prompt(`¿En qué carpeta del servidor guardo la configuración de «${name}»?\n\n(Dentro del directorio permitido de exportación.)`, name);
   if(path===null || !path.trim()) return;
   try{
-    const r=await fetch(`/api/openvpn/clients/${encodeURIComponent(name)}/save`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path.trim()})});
+    const r=await fetch(api(`/clients/${encodeURIComponent(name)}/save`),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path.trim()})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){ toast(d.detail||'No se pudo guardar.'); return; }
     toast('Guardada en '+(d.path||'el servidor')+' ✓');
@@ -534,7 +559,7 @@ async function emailConfig(name){
   const email = prompt(`¿A qué correo envío la configuración de «${name}»?\n\n(El correo no es un canal seguro; trátala como una credencial.)`, '');
   if(email===null || !email.trim()) return;
   try{
-    const r=await fetch(`/api/openvpn/clients/${encodeURIComponent(name)}/email`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.trim()})});
+    const r=await fetch(api(`/clients/${encodeURIComponent(name)}/email`),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.trim()})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){ toast(d.detail||'No se pudo enviar.'); return; }
     toast(d.simulated ? 'Correo simulado (SMTP no configurado) ✓' : 'Enviado a '+d.to+' ✓');
@@ -542,7 +567,7 @@ async function emailConfig(name){
 }
 async function renewClient(name){
   try{
-    const r=await fetch(`/api/openvpn/clients/${encodeURIComponent(name)}/renew`,{method:'POST'});
+    const r=await fetch(api(`/clients/${encodeURIComponent(name)}/renew`),{method:'POST'});
     if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo renovar.'); return; }
     toast('Acceso renovado ✓'); await load();
   }catch(e){ toast('No se pudo conectar con el servidor.'); }
@@ -550,7 +575,7 @@ async function renewClient(name){
 async function disconnectClient(name){
   if(!confirm(`¿Desconectar a «${name}» de la VPN ahora mismo?\n\nSe le cortará la conexión actual; podrá volver a conectarse.`)) return;
   try{
-    const r=await fetch(`/api/openvpn/connections/${encodeURIComponent(name)}/disconnect`,{method:'POST'});
+    const r=await fetch(api(`/connections/${encodeURIComponent(name)}/disconnect`),{method:'POST'});
     if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo desconectar.'); return; }
     toast('Desconectado ✓'); await load();
   }catch(e){ toast('No se pudo conectar con el servidor.'); }
