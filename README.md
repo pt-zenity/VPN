@@ -104,9 +104,9 @@ Variables de entorno con prefijo `VPNM_` (ver `vpn_manager/config.py`):
 
 - [x] **Fase 1** — OpenVPN, solo lectura (estado, clientes, conexiones).
 - [x] **Fase 2** — OpenVPN, escritura (alta, revocación, descarga de config).
-- [ ] **Fase 3** — WireGuard (peers, claves, `wg show`).
-- [ ] **Fase 4** — Historial y auditoría.
-- [ ] **Fase 5** — Despliegue interno (auth, HTTPS, hardening).
+- [x] **Fase 3** — WireGuard (peers, claves, `wg show`, QR, configuración editable).
+- [x] **Fase 4** — Historial y auditoría (página «Actividad», registro persistente).
+- [ ] **Fase 5** — Despliegue interno. *(Autenticación, 2FA, hardening y HTTPS-ready ya hechos; falta desplegarlo en el homelab y validarlo en vivo contra un servidor WireGuard real.)*
 
 Detalle completo en [`docs/ESPECIFICACION.md`](docs/ESPECIFICACION.md).
 
