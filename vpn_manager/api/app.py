@@ -548,11 +548,12 @@ def wg_revoke(name: str, user: str = Depends(require_perm("clients:write"))) -> 
     response_class=PlainTextResponse,
     dependencies=_PROTECTED,
 )
-def wg_config(name: str) -> Response:
+def wg_config(name: str, user: str = Depends(require_user)) -> Response:
     try:
         text = _wireguard().client_config(name)
     except VpnError as e:
         raise _http(e) from e
+    log.info("descarga de configuración de «%s» por %s", name, user)
     return PlainTextResponse(
         text, headers={"Content-Disposition": f'attachment; filename="{name}.conf"'}
     )
@@ -643,11 +644,12 @@ def openvpn_disconnect(name: str, user: str = Depends(require_perm("clients:writ
     response_class=PlainTextResponse,
     dependencies=_PROTECTED,
 )
-def openvpn_config(name: str) -> Response:
+def openvpn_config(name: str, user: str = Depends(require_user)) -> Response:
     try:
         text = _openvpn().client_config(name)
     except VpnError as e:
         raise _http(e) from e
+    log.info("descarga de configuración de «%s» por %s", name, user)
     return PlainTextResponse(
         text, headers={"Content-Disposition": f'attachment; filename="{name}.ovpn"'}
     )
