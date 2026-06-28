@@ -27,6 +27,7 @@
   .backend-badge{display:flex;align-items:center;gap:11px;background:#243330;border-radius:11px;
     padding:11px 13px;margin-bottom:10px}
   .backend-badge .logo{flex:none;color:var(--accent);display:flex;align-items:center}
+  .backend-badge .logo-img{width:26px;height:26px;border-radius:7px;display:block;object-fit:contain}
   .backend-badge .bk-name{font-size:14.5px;font-weight:600;color:#fff;line-height:1.2}
   .backend-badge .bk-sub{font-size:11.5px;color:#8a9893}
   .svc-chip{display:flex;align-items:center;gap:9px;background:#243330;border-radius:11px;
@@ -278,24 +279,11 @@ const since = s => { if(!s) return '—'; const m=Math.max(0,Math.round((Date.no
 const CLIENT_STATE = { valid:{cls:'s-ok',dot:'ok',label:'Acceso activo'}, revoked:{cls:'s-stop',dot:'stop',label:'Acceso retirado'}, expired:{cls:'s-warn',dot:'warn',label:'Caducado'} };
 let _serviceActive = true;
 
-// Emblema propio de VPN Manager: un "túnel seguro" (dos extremos enlazados con un
-// candado) para OpenVPN, y un rayo (velocidad) para WireGuard. Tintado por protocolo.
-// Nada de escudos (para no parecerse a otros proyectos).
+// El logo de cada protocolo se sirve desde /assets/<backend>.svg (coloca ahí los
+// logos OFICIALES; se incluyen placeholders neutros). El color de marca tiñe el resto.
 const BACKENDS = {
-  openvpn: { name:'OpenVPN', accent:'#e07d22', soft:'#fdf2e6',
-    logo:`<svg viewBox="0 0 28 28" width="26" height="26" fill="currentColor">
-      <circle cx="4.4" cy="14" r="2.5"/><circle cx="23.6" cy="14" r="2.5"/>
-      <rect x="6.7" y="13.2" width="3.6" height="1.6" rx=".8"/>
-      <rect x="17.7" y="13.2" width="3.6" height="1.6" rx=".8"/>
-      <rect x="9.9" y="12.3" width="8.2" height="7.4" rx="1.9"/>
-      <path d="M11.5 12.3v-1.7a2.5 2.5 0 0 1 5 0v1.7" fill="none" stroke="currentColor" stroke-width="1.7"/>
-      <circle cx="14" cy="15.4" r="1" fill="#fff"/><rect x="13.4" y="15.7" width="1.2" height="2.4" rx=".6" fill="#fff"/>
-    </svg>` },
-  wireguard: { name:'WireGuard', accent:'#88171a', soft:'#fbecec',
-    logo:`<svg viewBox="0 0 28 28" width="26" height="26" fill="currentColor">
-      <rect x="5" y="3.5" width="18" height="21" rx="5.5"/>
-      <path d="M15.6 6.8 9.6 15.4h3.8l-1.1 5.8 6-8.6h-3.8z" fill="#fff"/>
-    </svg>` },
+  openvpn:   { name:'OpenVPN',   accent:'#e07d22', soft:'#fdf2e6' },
+  wireguard: { name:'WireGuard', accent:'#88171a', soft:'#fbecec' },
 };
 let _backend = 'openvpn';
 function applyBackend(name){
@@ -303,7 +291,7 @@ function applyBackend(name){
   _backend = name;
   document.documentElement.style.setProperty('--accent', b.accent);
   document.documentElement.style.setProperty('--accent-soft', b.soft);
-  document.getElementById('backend-logo').innerHTML = b.logo;
+  document.getElementById('backend-logo').innerHTML = `<img class="logo-img" src="/assets/${name}.svg" alt="${esc(b.name)}">`;
   document.getElementById('backend-name').textContent = b.name;
   document.title = 'VPN Manager — ' + b.name;
   const sh = document.getElementById('svc-hint');
@@ -358,7 +346,7 @@ function renderServer(sv){
   const item=(k,v,mono)=> v ? `<div class="srv-item"><div class="k">${k}</div><div class="v${mono?' mono':''}">${v}</div></div>` : '';
   const tags=arr=> (arr&&arr.length)? arr.map(x=>`<span class="tag">${esc(x)}</span>`).join('') : '';
   const ciphers = sv.cipher ? sv.cipher.split(':').map(c=>`<span class="tag">${esc(c)}</span>`).join('') : '';
-  const grid = [
+  const cells = [
     item('Endpoint público', sv.public_endpoint?esc(sv.public_endpoint):'', true),
     item('Puerto', sv.port?esc(sv.port):'', true),
     item('Protocolo', sv.proto?esc(sv.proto).toUpperCase():''),
@@ -371,7 +359,10 @@ function renderServer(sv){
     item('DNS para clientes', tags(sv.dns_servers)),
     item('Rutas empujadas', tags(sv.routes)),
     item('Lista de revocación (CRL)', sv.crl_enabled?'<span style="color:var(--ok)">Activada</span>':'<span style="color:var(--warn)">Desactivada</span>'),
-  ].filter(Boolean).join('');
+  ].filter(Boolean);
+  // Completar la última fila (3 columnas) con celdas vacías para no dejar huecos.
+  while(cells.length % 3 !== 0) cells.push('<div class="srv-item"></div>');
+  const grid = cells.join('');
   const all = (sv.directives&&sv.directives.length)
     ? `<details class="allcfg"><summary>Ver toda la configuración (${sv.directives.length} directivas)</summary>
        <pre>${sv.directives.map(d=>esc(d.key+(d.value?' '+d.value:''))).join('\n')}</pre></details>` : '';

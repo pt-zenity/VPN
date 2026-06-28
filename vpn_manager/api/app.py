@@ -12,6 +12,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -175,6 +176,8 @@ app.add_middleware(
     same_site="strict",
     https_only=settings.cookie_secure,
 )
+
+app.mount("/assets", StaticFiles(directory=str(_UI / "assets")), name="assets")
 
 _PROTECTED = [Depends(require_user)]
 
