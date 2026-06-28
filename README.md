@@ -43,6 +43,12 @@ dar de alta personas, descargar su configuración y retirarles el acceso.
 - Las operaciones reales delegan en `easy-rsa` mediante `subprocess` **sin shell**.
 - El material criptográfico real está excluido del repositorio (ver `.gitignore`).
 
+## Documentación
+
+- [Manual de instalación](docs/INSTALACION.md) — dev (sandbox) y producción.
+- [Manual de uso](docs/MANUAL-DE-USO.md) — el día a día del panel.
+- [Especificación y hoja de ruta](docs/ESPECIFICACION.md) · [Auditoría de seguridad](docs/AUDITORIA-SEGURIDAD.md)
+
 ## Puesta en marcha
 
 ```bash
