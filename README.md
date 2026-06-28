@@ -1,9 +1,11 @@
 # VPN Manager
 
-Panel web para **administrar un servidor VPN** (OpenVPN — y WireGuard próximamente)
-desde una interfaz sencilla, en lugar de por línea de comandos. Pensado para que
-**alguien sin conocimientos técnicos** pueda gestionar quién tiene acceso a la red:
-dar de alta personas, descargar su configuración y retirarles el acceso.
+![CI](https://github.com/jl-segurayuste/vpn-manager/actions/workflows/ci.yml/badge.svg)
+
+Panel web para **administrar un servidor VPN** (OpenVPN y WireGuard) desde una interfaz
+sencilla, en lugar de por línea de comandos. Pensado para que **alguien sin conocimientos
+técnicos** pueda gestionar quién tiene acceso a la red: dar de alta dispositivos, descargar
+su configuración y retirarles el acceso.
 
 ## Características
 
