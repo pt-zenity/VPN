@@ -1,0 +1,29 @@
+# Despliegue de demostración (sandbox). Para producción, ver docs/INSTALACION.md:
+# pon VPNM_SANDBOX=false, monta las rutas reales del servidor VPN y fija los secretos.
+services:
+  vpn-manager:
+    build: .
+    image: vpn-manager:latest
+    container_name: vpn-manager
+    ports:
+      - "8200:8200"
+    environment:
+      VPNM_SANDBOX: "true"
+      # En producción (obligatorios): genera con `python -m vpn_manager.hashpw` y secrets.token_hex(32)
+      # VPNM_ADMIN_PASSWORD_HASH: ""
+      # VPNM_SECRET_KEY: ""
+      # VPNM_COOKIE_SECURE: "true"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    # Datos persistentes (usuarios, auditoría) fuera del contenedor de solo lectura.
+    volumes:
+      - vpnm-data:/app/sandbox/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  vpnm-data:

@@ -109,6 +109,25 @@ Copia `.env.example` a `.env` y ajusta. Todas las variables llevan prefijo `VPNM
 
 ---
 
+## 3.bis. Con Docker
+
+Imagen multi-stage que corre como **usuario sin privilegios** (uid 10001), con
+*healthcheck* incluido.
+
+```bash
+docker build -t vpn-manager .
+docker run -p 8200:8200 vpn-manager        # demo (sandbox), admin/admin
+# o con compose (volumen para usuarios/auditoría, read-only, cap_drop ALL):
+docker compose up -d
+```
+
+Para **producción** pasa las variables al contenedor (`-e` o el bloque `environment`
+del compose): `VPNM_SANDBOX=false`, las rutas reales (monta `/etc/openvpn`,
+`/etc/wireguard` como volúmenes), `VPNM_ADMIN_PASSWORD_HASH`, `VPNM_SECRET_KEY` y
+`VPNM_COOKIE_SECURE=true`. Para **instalar/gestionar el servicio del host** desde el
+contenedor harían falta privilegios adicionales; valora ejecutarlo nativo (systemd)
+en ese caso.
+
 ## 4. Despliegue en producción (interno)
 
 > Recomendado: acceso **solo interno**, detrás de un proxy con HTTPS. No exponer a internet.

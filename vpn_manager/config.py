@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     # Si True (por defecto), trabaja contra el sandbox y NO toca el sistema real.
     sandbox: bool = True
 
+    # Dónde escucha el servidor. Por defecto solo local; en contenedor: 0.0.0.0.
+    host: str = "127.0.0.1"
+    port: int = 8200
+
     # OpenVPN
     openvpn_pki_index: Path = SANDBOX / "openvpn" / "pki" / "index.txt"
     openvpn_status_file: Path = SANDBOX / "openvpn" / "openvpn-status.log"
