@@ -81,9 +81,39 @@ class UserStore:
 
     def list(self) -> list[dict]:
         return [
-            {"username": k, "role": v["role"], "role_label": ROLE_LABELS.get(v["role"], v["role"])}
+            {"username": k, "role": v["role"], "role_label": ROLE_LABELS.get(v["role"], v["role"]),
+             "totp": bool(v.get("totp_enabled"))}
             for k, v in sorted(self.users.items())
         ]
+
+    # ── Verificación en dos pasos (TOTP) ──────────────────────────────────
+    def totp_enabled(self, username: str) -> bool:
+        u = self.users.get(username)
+        return bool(u and u.get("totp_enabled"))
+
+    def totp_secret(self, username: str) -> str | None:
+        u = self.users.get(username)
+        return u.get("totp_secret") if u else None
+
+    def set_totp_secret(self, username: str, secret: str) -> None:
+        """Guarda un secreto pendiente de confirmar (aún no activo)."""
+        if username not in self.users:
+            raise UserError(f"No existe el usuario «{username}».")
+        self.users[username]["totp_secret"] = secret
+        self.users[username]["totp_enabled"] = False
+        self._save()
+
+    def enable_totp(self, username: str) -> None:
+        if not self.users.get(username, {}).get("totp_secret"):
+            raise UserError("Primero genera el código QR (configurar).")
+        self.users[username]["totp_enabled"] = True
+        self._save()
+
+    def disable_totp(self, username: str) -> None:
+        if username in self.users:
+            self.users[username].pop("totp_secret", None)
+            self.users[username]["totp_enabled"] = False
+            self._save()
 
     def _admins(self) -> list[str]:
         return [k for k, v in self.users.items() if v["role"] == "admin"]

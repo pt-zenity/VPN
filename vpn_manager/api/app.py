@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import audit, auth, bootstrap, delivery, installer, users
+from .. import audit, auth, bootstrap, delivery, installer, totp, users
 from ..backends.base import (
     AlreadyExists,
     Forbidden,
@@ -196,23 +196,49 @@ def ui(request: Request):
 def login_page(request: Request, error: str = ""):
     if request.session.get("user"):
         return RedirectResponse("/", status_code=303)
-    return HTMLResponse(_render_login(error))
+    step = "code" if request.session.get("pending_2fa") else "login"
+    return HTMLResponse(_render_login(error, step))
 
 
 @app.post("/login")
-def login(request: Request, username: str = Form(...), password: str = Form(...)):
+def login(
+    request: Request,
+    username: str = Form(""),
+    password: str = Form(""),
+    code: str = Form(""),
+):
     ip = request.client.host if request.client else "?"
     if _throttle.is_blocked(ip):
         log.warning("login bloqueado por exceso de intentos desde %s", ip)
-        return HTMLResponse(
-            _render_login("Demasiados intentos. Espera unos minutos."), status_code=429
-        )
+        return HTMLResponse(_render_login("Demasiados intentos. Espera unos minutos.",
+                                          "code" if request.session.get("pending_2fa") else "login"),
+                            status_code=429)
+
+    # Segundo paso: la sesión espera un código TOTP.
+    pending = request.session.get("pending_2fa")
+    if pending:
+        if totp.verify(_users.totp_secret(pending) or "", code):
+            _throttle.reset(ip)
+            request.session.clear()
+            request.session["user"] = pending
+            log.info("login correcto (%s) [2FA] desde %s", pending, ip)
+            return RedirectResponse("/", status_code=303)
+        _throttle.record_failure(ip)
+        log.warning("2FA incorrecto (usuario=%r) desde %s", pending[:32], ip)
+        return HTMLResponse(_render_login("Código de verificación incorrecto.", "code"),
+                            status_code=401)
+
+    # Primer paso: usuario + contraseña.
     if not _users.verify(username, password):
         _throttle.record_failure(ip)
         log.warning("login fallido (usuario=%r) desde %s", username[:32], ip)
-        return HTMLResponse(
-            _render_login("Usuario o contraseña incorrectos."), status_code=401
-        )
+        return HTMLResponse(_render_login("Usuario o contraseña incorrectos."), status_code=401)
+
+    if _users.totp_enabled(username):
+        request.session.clear()
+        request.session["pending_2fa"] = username
+        return RedirectResponse("/login", status_code=303)
+
     _throttle.reset(ip)
     request.session.clear()
     request.session["user"] = username
@@ -239,7 +265,44 @@ def me(user: str = Depends(require_user)) -> dict:
         "role": role,
         "role_label": users.ROLE_LABELS.get(role, role),
         "permissions": sorted(users.role_permissions(role)),
+        "totp_enabled": _users.totp_enabled(user),
     }
+
+
+class TwoFACode(BaseModel):
+    code: str = Field(min_length=4, max_length=10)
+
+
+@app.post("/api/me/2fa/setup")
+def me_2fa_setup(user: str = Depends(require_user)) -> dict:
+    secret = totp.generate_secret()
+    _users.set_totp_secret(user, secret)  # pendiente de confirmar
+    uri = totp.provisioning_uri(secret, user)
+    import segno
+    return {"secret": secret, "uri": uri, "qr": segno.make(uri, error="m").svg_inline(scale=4)}
+
+
+@app.post("/api/me/2fa/enable")
+def me_2fa_enable(body: TwoFACode, user: str = Depends(require_user)) -> dict:
+    if not totp.verify(_users.totp_secret(user) or "", body.code):
+        raise HTTPException(status_code=422, detail="Código incorrecto. Vuelve a intentarlo.")
+    try:
+        _users.enable_totp(user)
+    except users.UserError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    log.info("2FA activado por %s", user)
+    return {"totp_enabled": True}
+
+
+@app.post("/api/me/2fa/disable")
+def me_2fa_disable(body: TwoFACode, user: str = Depends(require_user)) -> dict:
+    if not _users.totp_enabled(user):
+        raise HTTPException(status_code=422, detail="La verificación en dos pasos no está activa.")
+    if not totp.verify(_users.totp_secret(user) or "", body.code):
+        raise HTTPException(status_code=422, detail="Código incorrecto.")
+    _users.disable_totp(user)
+    log.info("2FA desactivado por %s", user)
+    return {"totp_enabled": False}
 
 
 # ── Gestión de usuarios (rol admin) ──────────────────────────────────────────
@@ -590,12 +653,22 @@ def openvpn_email(name: str, body: SendEmail, user: str = Depends(require_perm("
 
 
 # ── Utilidades ───────────────────────────────────────────────────────────────
-def _render_login(error: str = "") -> str:
+def _render_login(error: str = "", step: str = "login") -> str:
+    import re
+
     html = (_UI / "login.html").read_text(encoding="utf-8")
-    block = (
-        f'<div class="error">{_escape(error)}</div>' if error else ""
-    )
-    return html.replace("<!--ERROR-->", block)
+    err = f'<div class="error">{_escape(error)}</div>' if error else ""
+    html = html.replace("<!--ERROR-->", err)
+    if step == "code":
+        # Paso del código: deja el bloque CODE, quita CREDS.
+        html = re.sub(r"<!--CREDS-->.*?<!--/CREDS-->", "", html, flags=re.DOTALL)
+        html = html.replace("<!--SUBTITLE-->", "Introduce el código de tu app de autenticación.")
+        html = html.replace("<!--BUTTON-->", "Verificar")
+    else:
+        html = re.sub(r"<!--CODE-->.*?<!--/CODE-->", "", html, flags=re.DOTALL)
+        html = html.replace("<!--SUBTITLE-->", "Introduce tus credenciales para administrar la VPN.")
+        html = html.replace("<!--BUTTON-->", "Entrar")
+    return html
 
 
 def _escape(s: str) -> str:

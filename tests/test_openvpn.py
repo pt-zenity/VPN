@@ -438,6 +438,23 @@ class TestRolesApi:
         assert c.delete("/api/users/oper").status_code == 200
         assert c.delete("/api/users/admin").status_code == 422       # no a sí mismo
 
+    def test_flujo_2fa(self):
+        from vpn_manager.totp import now_code
+        c = self._login("admin", "admin123")
+        d = c.post("/api/me/2fa/setup").json()
+        assert d["secret"] and d["uri"].startswith("otpauth://")
+        # código incorrecto no activa
+        assert c.post("/api/me/2fa/enable", json={"code": "000000"}).status_code == 422
+        # código correcto activa
+        assert c.post("/api/me/2fa/enable", json={"code": now_code(d["secret"])}).status_code == 200
+        assert c.get("/api/me").json()["totp_enabled"] is True
+        # nuevo login: usuario+contraseña -> queda pendiente de 2FA (no autenticado aún)
+        c2 = TestClient(app)
+        c2.post("/login", data={"username": "admin", "password": "admin123"}, follow_redirects=False)
+        assert c2.get("/api/me").status_code == 401            # aún no autenticado
+        c2.post("/login", data={"code": now_code(d["secret"])}, follow_redirects=False)
+        assert c2.get("/api/me").status_code == 200            # tras el código, dentro
+
     def test_auditoria_solo_admin(self):
         adm = self._login("admin", "admin123")
         assert adm.get("/api/audit").status_code == 200
@@ -498,6 +515,23 @@ class TestInstaller:
         info = system_info()
         assert set(info) >= {"distro", "package_manager", "installed", "is_root", "supported"}
         assert set(info["installed"]) == {"openvpn", "easyrsa", "wireguard"}
+
+
+class TestTotp:
+    def test_codigo_valido_e_invalido(self):
+        from vpn_manager.totp import generate_secret, now_code, verify
+        secret = generate_secret()
+        t = 1_700_000_000.0
+        code = now_code(secret, at=t)
+        assert verify(secret, code, at=t)
+        assert verify(secret, code, at=t + 25)          # dentro de la ventana
+        assert not verify(secret, "000000", at=t)       # código incorrecto
+        assert not verify("", code, at=t)               # sin secreto
+
+    def test_uri_otpauth(self):
+        from vpn_manager.totp import provisioning_uri
+        uri = provisioning_uri("ABC234", "ana")
+        assert uri.startswith("otpauth://totp/") and "secret=ABC234" in uri
 
 
 class TestAudit:

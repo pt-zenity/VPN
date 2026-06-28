@@ -176,6 +176,7 @@
       <a data-page="actividad" id="nav-actividad" onclick="showPage('actividad')" style="display:none">Actividad</a>
       <a data-page="usuarios" id="nav-usuarios" onclick="showPage('usuarios')" style="display:none">Usuarios</a>
       <a data-page="sistema" onclick="showPage('sistema')">Sistema</a>
+      <a data-page="cuenta" onclick="showPage('cuenta')">Mi cuenta</a>
     </nav>
     <div class="switch" id="backend-switch">
       <button class="on" data-b="openvpn" onclick="setBackend('openvpn')">OpenVPN</button>
@@ -285,6 +286,11 @@
         <div class="stat"><div class="k">Permisos</div><div class="v" id="sys-root" style="font-size:18px">—</div></div>
       </div>
       <div class="panel" id="sys-services"><div class="empty">Cargando…</div></div>
+    </section>
+
+    <section id="cuenta" class="page">
+      <div class="sechead"><div><h2>Mi cuenta</h2><p class="hint">Tu usuario y la verificación en dos pasos (2FA), que añade un código de un solo uso al iniciar sesión.</p></div></div>
+      <div class="panel" id="account"><div class="empty">Cargando…</div></div>
     </section>
    </div>
   </main>
@@ -404,6 +410,60 @@ function showPage(id){
   if(id==='usuarios') loadUsers();
   if(id==='sistema') loadSystem();
   if(id==='actividad') loadAudit();
+  if(id==='cuenta') loadAccount();
+}
+
+// ── Mi cuenta / 2FA ──
+function loadAccount(){
+  const on = !!_me.totp_enabled;
+  document.getElementById('account').innerHTML = `
+    <div class="row"><div><div class="name">${esc(_me.user||'')}</div><div class="meta">${esc(_me.role_label||'')}</div></div></div>
+    <div class="row"><div>
+        <div class="name">Verificación en dos pasos (2FA)</div>
+        <div class="meta">${on?'Activada — se te pide un código al entrar.':'Desactivada — añade un código de un solo uso al iniciar sesión.'}</div>
+        <div id="twofa-area"></div>
+      </div>
+      <div class="right"><span class="state ${on?'s-ok':'s-warn'}"><span class="dot ${on?'ok':'warn'}"></span>${on?'Activada':'Desactivada'}</span>
+        ${on?`<button class="act danger" onclick="disable2fa()">Desactivar</button>`:`<button class="act" onclick="setup2fa()">Activar</button>`}</div>
+    </div>`;
+}
+async function setup2fa(){
+  try{
+    const d = await fetch('/api/me/2fa/setup',{method:'POST'}).then(r=>r.json());
+    document.getElementById('twofa-area').innerHTML = `
+      <div style="margin-top:12px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+        <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px;width:140px">${d.qr}</div>
+        <div style="max-width:360px">
+          <p class="meta">1) Escanea el QR con tu app (Google Authenticator, Aegis…) o introduce la clave manualmente:</p>
+          <p class="mono" style="font-size:12px;word-break:break-all;color:var(--muted)">${esc(d.secret)}</p>
+          <p class="meta">2) Escribe el código de 6 dígitos que muestra la app para confirmar:</p>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <input id="twofa-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+              style="font:inherit;padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;width:120px">
+            <button class="btn primary" onclick="enable2fa()">Activar</button>
+          </div>
+        </div>
+      </div>`;
+  }catch(e){ toast('No se pudo iniciar la configuración.'); }
+}
+async function enable2fa(){
+  const code = (document.getElementById('twofa-code').value||'').trim();
+  try{
+    const r = await fetch('/api/me/2fa/enable',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok){ toast(d.detail||'No se pudo activar.'); return; }
+    _me.totp_enabled = true; toast('Verificación en dos pasos activada ✓'); loadAccount();
+  }catch(e){ toast('No se pudo conectar.'); }
+}
+async function disable2fa(){
+  const code = prompt('Para desactivar la 2FA, introduce un código actual de tu app:','');
+  if(!code) return;
+  try{
+    const r = await fetch('/api/me/2fa/disable',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code.trim()})});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok){ toast(d.detail||'No se pudo desactivar.'); return; }
+    _me.totp_enabled = false; toast('Verificación en dos pasos desactivada ✓'); loadAccount();
+  }catch(e){ toast('No se pudo conectar.'); }
 }
 
 async function loadAudit(){
