@@ -225,3 +225,26 @@ class TestAuthModule:
         assert t.is_blocked("1.2.3.4")
         t.reset("1.2.3.4")
         assert not t.is_blocked("1.2.3.4")
+
+    def test_secret_key_obligatoria_en_produccion(self):
+        from vpn_manager.auth import resolve_secret
+
+        with pytest.raises(RuntimeError):
+            resolve_secret("", sandbox=False)
+        assert resolve_secret("una-clave", sandbox=False) == "una-clave"
+        assert len(resolve_secret("", sandbox=True)) == 64  # efímera en dev
+
+
+class TestSecurityHeaders:
+    def test_cabeceras_de_seguridad(self):
+        r = TestClient(app).get("/health")
+        assert r.headers["x-frame-options"] == "DENY"
+        assert r.headers["x-content-type-options"] == "nosniff"
+        assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
+        assert r.headers["referrer-policy"] == "no-referrer"
+
+    def test_api_no_se_cachea(self):
+        c = TestClient(app)
+        _login(c)
+        r = c.get("/api/openvpn/clients")
+        assert r.headers["cache-control"] == "no-store"

@@ -56,9 +56,15 @@ def resolve_credentials(admin_user: str, admin_password_hash: str, sandbox: bool
     return admin_user, hash_password(_DEV_PASSWORD)
 
 
-def resolve_secret(secret_key: str) -> str:
+def resolve_secret(secret_key: str, sandbox: bool = True) -> str:
     if secret_key:
         return secret_key
+    if not sandbox:
+        raise RuntimeError(
+            "Falta VPNM_SECRET_KEY: el panel no arranca sin clave de sesión en "
+            "producción. Genérala con «python -c \"import secrets; "
+            "print(secrets.token_hex(32))\"»."
+        )
     log.warning(
         "⚠️  VPNM_SECRET_KEY no configurada: se usa una clave efímera "
         "(las sesiones se pierden al reiniciar)."

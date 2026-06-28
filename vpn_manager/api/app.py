@@ -7,6 +7,7 @@ y /health.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
@@ -29,6 +30,20 @@ from ..backends.openvpn import OpenVpnBackend
 from ..config import settings
 
 _UI = Path(__file__).resolve().parent.parent / "ui"
+log = logging.getLogger("vpn_manager.audit")
+
+# Cabeceras de seguridad aplicadas a toda respuesta.
+_SECURITY_HEADERS = {
+    "X-Frame-Options": "DENY",  # anti-clickjacking
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Content-Security-Policy": (
+        "default-src 'self'; img-src 'self' data:; "
+        "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
+        "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+    ),
+}
 
 # Credenciales y clave de sesión resueltas una vez al arrancar.
 _ADMIN_USER, _ADMIN_HASH = auth.resolve_credentials(
@@ -66,9 +81,22 @@ class CreateClient(BaseModel):
 
 
 app = FastAPI(title="VPN Manager", version="0.3.0")
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for k, v in _SECURITY_HEADERS.items():
+        response.headers.setdefault(k, v)
+    # Nunca cachear el panel ni la API (pueden contener datos sensibles).
+    if request.url.path != "/health":
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key=auth.resolve_secret(settings.secret_key),
+    secret_key=auth.resolve_secret(settings.secret_key, settings.sandbox),
     session_cookie="vpnm_session",
     max_age=settings.session_max_age,
     same_site="strict",
@@ -97,18 +125,24 @@ def login_page(request: Request, error: str = ""):
 def login(request: Request, username: str = Form(...), password: str = Form(...)):
     ip = request.client.host if request.client else "?"
     if _throttle.is_blocked(ip):
+        log.warning("login bloqueado por exceso de intentos desde %s", ip)
         return HTMLResponse(
             _render_login("Demasiados intentos. Espera unos minutos."), status_code=429
         )
-    ok = hmac_user(username) and auth.verify_password(password, _ADMIN_HASH)
-    if not ok:
+    # Evaluar ambos factores sin cortocircuito, para no filtrar por tiempo si el
+    # usuario es correcto o no.
+    user_ok = _user_matches(username)
+    pass_ok = auth.verify_password(password, _ADMIN_HASH)
+    if not (user_ok and pass_ok):
         _throttle.record_failure(ip)
+        log.warning("login fallido (usuario=%r) desde %s", username[:32], ip)
         return HTMLResponse(
             _render_login("Usuario o contraseña incorrectos."), status_code=401
         )
     _throttle.reset(ip)
     request.session.clear()
     request.session["user"] = _ADMIN_USER
+    log.info("login correcto (%s) desde %s", _ADMIN_USER, ip)
     return RedirectResponse("/", status_code=303)
 
 
@@ -150,21 +184,25 @@ def openvpn_connections() -> list[VpnConnection]:
 @app.post(
     "/api/openvpn/clients", response_model=VpnClient, status_code=201, dependencies=_PROTECTED
 )
-def openvpn_create(body: CreateClient) -> VpnClient:
+def openvpn_create(body: CreateClient, user: str = Depends(require_user)) -> VpnClient:
     try:
-        return _openvpn().create_client(body.name)
+        client = _openvpn().create_client(body.name)
     except VpnError as e:
         raise _http(e) from e
+    log.info("alta de acceso «%s» por %s", client.name, user)
+    return client
 
 
 @app.post(
     "/api/openvpn/clients/{name}/revoke", response_model=VpnClient, dependencies=_PROTECTED
 )
-def openvpn_revoke(name: str) -> VpnClient:
+def openvpn_revoke(name: str, user: str = Depends(require_user)) -> VpnClient:
     try:
-        return _openvpn().revoke_client(name)
+        client = _openvpn().revoke_client(name)
     except VpnError as e:
         raise _http(e) from e
+    log.info("revocación de acceso «%s» por %s", client.name, user)
+    return client
 
 
 @app.get(
@@ -183,7 +221,7 @@ def openvpn_config(name: str) -> Response:
 
 
 # ── Utilidades ───────────────────────────────────────────────────────────────
-def hmac_user(username: str) -> bool:
+def _user_matches(username: str) -> bool:
     """Comparación de usuario en tiempo constante."""
     import hmac
 
