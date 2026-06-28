@@ -12,6 +12,7 @@ dist/
 # Configuración local / secretos
 .env
 .env.*
+!.env.example
 
 # Material criptográfico real — NUNCA debe subirse a GitHub
 *.key

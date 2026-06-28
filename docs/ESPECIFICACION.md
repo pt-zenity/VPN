@@ -40,7 +40,12 @@ Hacer por web todo lo que hoy se hace por CLI en el propio servidor VPN:
 
 ## 3. Seguridad (es gestión de acceso remoto → crítico)
 
-- Autenticación fuerte (login + sesión httpOnly), autorización por rol, rate-limit.
+- **[HECHO]** Autenticación: login con contraseña PBKDF2-SHA256 (600k it., comparación
+  en tiempo constante) + sesión en cookie firmada (HttpOnly, SameSite=Strict, Secure
+  configurable). Todo protegido salvo `/login` y `/health`. Seguro por defecto: en
+  producción sin contraseña, no arranca. Anti–fuerza bruta por IP. Hash generable con
+  `python -m vpn_manager.hashpw`.
+- Pendiente: autorización por rol (de momento un único admin).
 - **Auditoría**: registro de toda acción sensible (crear/revocar cliente, parar
   servicio) con usuario, hora y resultado.
 - **Acceso solo interno** (como CyberHound): nunca expuesto a internet.

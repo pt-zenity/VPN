@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VPN Manager — Entrar</title>
+<style>
+  :root{--bg:#fbfbfa;--panel:#fff;--ink:#1c1d21;--muted:#6b6f76;--faint:#9a9ea6;
+    --line:#e2e3e6;--accent:#1f6f6b;--accent-soft:#eef4f3;--stop:#b3493f}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);min-height:100vh;display:flex;
+    align-items:center;justify-content:center;padding:24px;
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;letter-spacing:-.005em}
+  .card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);
+    border-radius:18px;padding:34px 30px;box-shadow:0 6px 24px rgba(0,0,0,.05)}
+  .brand{font-size:14px;font-weight:600;color:var(--accent);letter-spacing:.01em}
+  h1{font-size:21px;font-weight:600;letter-spacing:-.02em;margin-top:4px}
+  p.sub{color:var(--muted);font-size:14px;margin:6px 0 22px}
+  label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin:14px 0 6px}
+  input{width:100%;font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line);
+    border-radius:11px;background:#fff;color:var(--ink)}
+  input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  button{width:100%;margin-top:22px;border:0;background:var(--accent);color:#fff;font:inherit;
+    font-size:15px;font-weight:600;padding:12px;border-radius:11px;cursor:pointer}
+  button:hover{background:#1a5e5a}
+  .error{margin-top:16px;padding:10px 13px;background:#fbeceb;color:var(--stop);
+    border-radius:10px;font-size:13.5px}
+</style>
+</head>
+<body>
+  <form class="card" method="post" action="/login">
+    <div class="brand">VPN Manager</div>
+    <h1>Entrar al panel</h1>
+    <p class="sub">Introduce tus credenciales para administrar la VPN.</p>
+    <!--ERROR-->
+    <label for="u">Usuario</label>
+    <input id="u" name="username" type="text" autocomplete="username" autofocus required>
+    <label for="p">Contraseña</label>
+    <input id="p" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit">Entrar</button>
+  </form>
+</body>
+</html>

@@ -17,6 +17,14 @@ dar de alta personas, descargar su configuración y retirarles el acceso.
 
 ## Seguridad
 
+- **Autenticación obligatoria.** Login con contraseña (**PBKDF2-SHA256**, 600k
+  iteraciones, comparación en tiempo constante) y sesión en **cookie firmada**
+  (`HttpOnly`, `SameSite=Strict`, `Secure` configurable). Todo el panel y la API
+  requieren sesión; solo `/login` y `/health` son públicos.
+- **Seguro por defecto.** En producción sin `VPNM_ADMIN_PASSWORD_HASH`, la app
+  **se niega a arrancar**. En sandbox usa la credencial de desarrollo `admin/admin`
+  mostrando un aviso.
+- **Anti–fuerza bruta**: bloqueo temporal por IP tras varios intentos fallidos.
 - **Sandbox por defecto.** En desarrollo apunta a `./sandbox/`, **nunca** a un
   servidor VPN real. Apuntar a producción es una decisión explícita por
   configuración (`VPNM_SANDBOX=false` + rutas reales).
@@ -34,6 +42,10 @@ pip install -e ".[dev]"
 python -m vpn_manager           # http://127.0.0.1:8200
 ```
 
+En desarrollo (sandbox) entra con **admin / admin**. Para producción, copia
+`.env.example` a `.env`, genera tu contraseña con `python -m vpn_manager.hashpw`
+y fija `VPNM_SECRET_KEY`.
+
 ## Tests
 
 ```bash
@@ -45,8 +57,10 @@ ruff check .
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| `GET`  | `/` | Panel web |
-| `GET`  | `/health` | Estado del servicio y modo sandbox |
+| `GET`  | `/` | Panel web (requiere sesión) |
+| `GET`/`POST` | `/login` | Página y envío de login |
+| `POST` | `/logout` | Cierra la sesión |
+| `GET`  | `/health` | Estado del servicio y modo sandbox (público) |
 | `GET`  | `/api/openvpn/status` | Estado del servidor OpenVPN |
 | `GET`  | `/api/openvpn/clients` | Lista de clientes/certificados |
 | `GET`  | `/api/openvpn/connections` | Conexiones activas |

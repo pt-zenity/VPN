@@ -19,6 +19,10 @@
   .wrap{max-width:880px;margin:0 auto;padding:40px 24px 64px}
 
   header{margin-bottom:30px}
+  .topbar{display:flex;align-items:center;justify-content:space-between}
+  .logout{border:1px solid var(--line-strong);background:#fff;color:var(--muted);font:inherit;
+    font-size:13px;font-weight:500;padding:6px 13px;border-radius:9px;cursor:pointer}
+  .logout:hover{background:#f7f7f6;color:var(--ink)}
   .brand{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:.01em}
   h1{font-size:27px;font-weight:600;letter-spacing:-.02em;margin-top:4px}
   .lead{color:var(--muted);font-size:15px;margin-top:6px;max-width:62ch}
@@ -82,7 +86,10 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">VPN Manager</div>
+    <div class="topbar">
+      <div class="brand">VPN Manager</div>
+      <form method="post" action="/logout"><button class="logout" type="submit">Salir</button></form>
+    </div>
     <h1>Panel de la VPN</h1>
     <p class="lead">Desde aquí puedes ver y administrar quién tiene acceso a tu red privada y quién está conectado en este momento. No necesitas usar la línea de comandos.</p>
 

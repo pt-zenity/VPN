@@ -58,11 +58,19 @@ class TestOpenVpnParsing:
         assert s.detail == "sandbox"
 
 
-class TestApi:
-    client = TestClient(app)
+def _login(client: TestClient) -> None:
+    r = client.post("/login", data={"username": "admin", "password": "admin"})
+    assert r.status_code == 200  # sigue la redirección al panel
 
-    def test_health(self):
-        r = self.client.get("/health")
+
+class TestApi:
+    @pytest.fixture(autouse=True)
+    def _auth(self):
+        self.client = TestClient(app)
+        _login(self.client)
+
+    def test_health_es_publico(self):
+        r = TestClient(app).get("/health")  # sin login
         assert r.status_code == 200
         assert r.json()["status"] == "ok"
         assert r.json()["sandbox"] is True
@@ -76,6 +84,33 @@ class TestApi:
         r = self.client.get("/api/openvpn/connections")
         assert r.status_code == 200
         assert len(r.json()) == 2
+
+
+class TestAuth:
+    def test_api_sin_login_devuelve_401(self):
+        c = TestClient(app)
+        assert c.get("/api/openvpn/clients").status_code == 401
+        assert c.get("/api/openvpn/status").status_code == 401
+        assert c.post("/api/openvpn/clients", json={"name": "x"}).status_code == 401
+
+    def test_panel_sin_login_redirige_a_login(self):
+        c = TestClient(app)
+        r = c.get("/", follow_redirects=False)
+        assert r.status_code == 303
+        assert r.headers["location"] == "/login"
+
+    def test_login_incorrecto_devuelve_401(self):
+        c = TestClient(app)
+        r = c.post("/login", data={"username": "admin", "password": "malo"})
+        assert r.status_code == 401
+
+    def test_login_correcto_y_logout(self):
+        c = TestClient(app)
+        _login(c)
+        assert c.get("/api/openvpn/clients").status_code == 200
+        assert c.get("/api/me").json()["user"] == "admin"
+        c.post("/logout")
+        assert c.get("/api/openvpn/clients").status_code == 401
 
 
 class TestOpenVpnWrite:
@@ -132,6 +167,7 @@ class TestWriteApi:
         monkeypatch.setattr(settings, "openvpn_pki_index", pki / "index.txt")
         monkeypatch.setattr(settings, "openvpn_status_file", status)
         self.client = TestClient(app)
+        _login(self.client)
 
     def test_alta_revoca_y_descarga_por_api(self):
         r = self.client.post("/api/openvpn/clients", json={"name": "tablet-jose"})
@@ -155,3 +191,37 @@ class TestWriteApi:
         assert self.client.post("/api/openvpn/clients", json={"name": "a b"}).status_code == 422
         assert self.client.post("/api/openvpn/clients/server/revoke").status_code == 403
         assert self.client.post("/api/openvpn/clients/fantasma/revoke").status_code == 404
+
+
+class TestAuthModule:
+    def test_hash_y_verify(self):
+        from vpn_manager.auth import hash_password, verify_password
+
+        h = hash_password("s3creto", iterations=1000)  # iteraciones bajas: test rápido
+        assert verify_password("s3creto", h)
+        assert not verify_password("otra", h)
+        assert not verify_password("s3creto", "formato-malo")
+
+    def test_produccion_sin_password_no_arranca(self):
+        from vpn_manager.auth import resolve_credentials
+
+        with pytest.raises(RuntimeError):
+            resolve_credentials("admin", "", sandbox=False)
+
+    def test_sandbox_sin_password_usa_dev(self):
+        from vpn_manager.auth import resolve_credentials, verify_password
+
+        user, h = resolve_credentials("admin", "", sandbox=True)
+        assert user == "admin"
+        assert verify_password("admin", h)
+
+    def test_throttle_bloquea_tras_n_intentos(self):
+        from vpn_manager.auth import LoginThrottle
+
+        t = LoginThrottle(max_attempts=3, lock_seconds=300)
+        assert not t.is_blocked("1.2.3.4")
+        for _ in range(3):
+            t.record_failure("1.2.3.4")
+        assert t.is_blocked("1.2.3.4")
+        t.reset("1.2.3.4")
+        assert not t.is_blocked("1.2.3.4")

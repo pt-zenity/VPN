@@ -30,5 +30,16 @@ class Settings(BaseSettings):
     wireguard_dir: Path = SANDBOX / "wireguard"
     wireguard_interface: str = "wg0"
 
+    # ── Autenticación del panel ────────────────────────────────────────────
+    admin_user: str = "admin"
+    # Hash PBKDF2 (`pbkdf2_sha256$it$salt$hash`). Vacío => en sandbox usa una
+    # credencial de desarrollo con aviso; en producción la app se niega a arrancar.
+    admin_password_hash: str = ""
+    # Clave para firmar la cookie de sesión. Vacía => se genera una efímera (las
+    # sesiones se invalidan al reiniciar). En producción, fijar VPNM_SECRET_KEY.
+    secret_key: str = ""
+    session_max_age: int = 8 * 3600  # 8 horas
+    cookie_secure: bool = False  # poner True detrás de HTTPS
+
 
 settings = Settings()
