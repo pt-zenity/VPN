@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     # Fichero de usuarios del panel (multiusuario + roles). Si no existe, se siembra
     # con el admin de arriba.
     users_file: Path = SANDBOX / "data" / "users.json"
+    # Fichero de auditoría persistida (JSON-Lines).
+    audit_file: Path = SANDBOX / "data" / "audit.jsonl"
     # Permitir que el panel INSTALE los servicios VPN (apt/dnf/…). Doble seguro: además
     # del rol admin, en producción hay que activarlo aquí y ejecutarse como root.
     allow_install: bool = False

@@ -438,6 +438,13 @@ class TestRolesApi:
         assert c.delete("/api/users/oper").status_code == 200
         assert c.delete("/api/users/admin").status_code == 422       # no a sí mismo
 
+    def test_auditoria_solo_admin(self):
+        adm = self._login("admin", "admin123")
+        assert adm.get("/api/audit").status_code == 200
+        assert isinstance(adm.get("/api/audit").json()["entries"], list)
+        assert self._login("oper", "operario1").get("/api/audit").status_code == 403
+        assert self._login("visor", "visor1234").get("/api/audit").status_code == 403
+
     def test_instalacion_solo_admin(self):
         # admin: simula la instalación (sandbox); operador/visor: 403
         adm = self._login("admin", "admin123")
@@ -491,6 +498,22 @@ class TestInstaller:
         info = system_info()
         assert set(info) >= {"distro", "package_manager", "installed", "is_root", "supported"}
         assert set(info["installed"]) == {"openvpn", "easyrsa", "wireguard"}
+
+
+class TestAudit:
+    def test_persiste_y_lee(self, tmp_path):
+        import logging
+        from vpn_manager.audit import attach, recent
+        path = tmp_path / "audit.jsonl"
+        attach("vpn_manager.audit.test", path)
+        logging.getLogger("vpn_manager.audit.test").info("alta de «ana» por admin")
+        entries = recent(path)
+        assert entries and entries[0]["message"] == "alta de «ana» por admin"
+        assert "ts" in entries[0] and entries[0]["level"] == "INFO"
+
+    def test_recent_vacio_si_no_existe(self, tmp_path):
+        from vpn_manager.audit import recent
+        assert recent(tmp_path / "no.jsonl") == []
 
 
 class TestBootstrap:

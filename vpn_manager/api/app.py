@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import auth, bootstrap, delivery, installer, users
+from .. import audit, auth, bootstrap, delivery, installer, users
 from ..backends.base import (
     AlreadyExists,
     Forbidden,
@@ -34,6 +34,8 @@ from ..config import settings
 
 _UI = Path(__file__).resolve().parent.parent / "ui"
 log = logging.getLogger("vpn_manager.audit")
+# Persiste en fichero todo lo que se registre en el logger de auditoría.
+audit.attach("vpn_manager.audit", settings.audit_file)
 
 # Cabeceras de seguridad aplicadas a toda respuesta.
 _SECURITY_HEADERS = {
@@ -250,6 +252,11 @@ class CreateUser(BaseModel):
 class UpdateUser(BaseModel):
     role: str | None = None
     password: str | None = Field(default=None, min_length=8, max_length=256)
+
+
+@app.get("/api/audit", dependencies=[Depends(require_perm("audit:read"))])
+def audit_log(limit: int = 100) -> dict:
+    return {"entries": audit.recent(settings.audit_file, max(1, min(limit, 500)))}
 
 
 @app.get("/api/users", dependencies=[Depends(require_perm("users:manage"))])

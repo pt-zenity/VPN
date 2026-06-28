@@ -173,6 +173,7 @@
       <a data-page="clientes" onclick="showPage('clientes')">Dispositivos <span class="n" id="nav-clients">·</span></a>
       <a data-page="conexiones" onclick="showPage('conexiones')">Conexiones <span class="n" id="nav-conns">·</span></a>
       <a data-page="registros" onclick="showPage('registros')">Registros</a>
+      <a data-page="actividad" id="nav-actividad" onclick="showPage('actividad')" style="display:none">Actividad</a>
       <a data-page="usuarios" id="nav-usuarios" onclick="showPage('usuarios')" style="display:none">Usuarios</a>
       <a data-page="sistema" onclick="showPage('sistema')">Sistema</a>
     </nav>
@@ -266,6 +267,14 @@
         <div class="formhint" id="u-hint" style="display:none"></div>
         <div id="users"><div class="empty">Cargando…</div></div>
       </div>
+    </section>
+
+    <section id="actividad" class="page">
+      <div class="sechead">
+        <div><h2>Actividad</h2><p class="hint">Registro de acciones del panel: inicios de sesión, altas y bajas de dispositivos, cambios de configuración y de usuarios, instalaciones…</p></div>
+        <button class="btn" onclick="loadAudit()">Actualizar</button>
+      </div>
+      <div class="panel" id="audit"><div class="empty">Cargando…</div></div>
     </section>
 
     <section id="sistema" class="page">
@@ -394,6 +403,22 @@ function showPage(id){
   window.scrollTo(0,0);
   if(id==='usuarios') loadUsers();
   if(id==='sistema') loadSystem();
+  if(id==='actividad') loadAudit();
+}
+
+async function loadAudit(){
+  if(!can('audit:read')) return;
+  try{
+    const d = await fetch('/api/audit?limit=200').then(r=>r.json());
+    const box = document.getElementById('audit');
+    if(!d.entries || !d.entries.length){ box.innerHTML='<div class="empty">Sin actividad registrada todavía.</div>'; return; }
+    box.innerHTML = d.entries.map(e=>{
+      const warn = e.level && e.level!=='INFO';
+      const t = e.ts ? new Date(e.ts).toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '';
+      return `<div class="row"><div><div class="name" style="font-weight:500">${esc(e.message)}</div></div>
+        <div class="right"><span class="sub">${esc(t)}</span>${warn?`<span class="state s-warn"><span class="dot warn"></span>${esc(e.level)}</span>`:''}</div></div>`;
+    }).join('');
+  }catch(e){ document.getElementById('audit').innerHTML='<div class="err">No se pudo cargar la actividad.</div>'; }
 }
 
 // ── Sistema / instalación ──
@@ -463,6 +488,7 @@ async function loadMe(){
   chip.style.display=''; document.getElementById('me-user').textContent=_me.user||'—';
   document.getElementById('me-role').textContent=_me.role_label||'';
   document.getElementById('nav-usuarios').style.display = can('users:manage') ? '' : 'none';
+  document.getElementById('nav-actividad').style.display = can('audit:read') ? '' : 'none';
   applyPerms();
 }
 function applyPerms(){

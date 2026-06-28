@@ -17,8 +17,8 @@ from . import auth
 # ── Roles y permisos ───────────────────────────────────────────────────────
 PERMISSIONS: dict[str, set[str]] = {
     "admin": {
-        "clients:read", "clients:write", "service:control",
-        "server:read", "server:write", "logs:read", "users:manage", "system:install",
+        "clients:read", "clients:write", "service:control", "server:read", "server:write",
+        "logs:read", "users:manage", "system:install", "audit:read",
     },
     "operator": {
         "clients:read", "clients:write", "service:control", "server:read", "logs:read",
