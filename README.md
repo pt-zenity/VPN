@@ -1,115 +1,248 @@
 # VPN Manager
 
-![CI](https://github.com/jl-segurayuste/vpn-manager/actions/workflows/ci.yml/badge.svg)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](CHANGELOG.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Panel web para **administrar un servidor VPN** (OpenVPN y WireGuard) desde una interfaz
-sencilla, en lugar de por línea de comandos. Pensado para que **alguien sin conocimientos
-técnicos** pueda gestionar quién tiene acceso a la red: dar de alta dispositivos, descargar
-su configuración y retirarles el acceso.
+A lightweight web panel for managing **OpenVPN** and **WireGuard** VPN servers from a clean browser interface — instead of the command line. Designed so that someone without deep technical knowledge can manage who has access: add devices, download configurations and revoke access.
 
-## Características
+> **Live panel:** https://8200-ixcerotqf78sv31s3bels-2e77fc33.sandbox.novita.ai  
+> **Login:** `admin` / `admin123`
 
-- **Resumen**: totales de accesos activos, conectados y caducados/retirados.
-- **Personas con acceso**: lista de certificados/clientes con su estado en lenguaje
-  llano (*acceso activo*, *retirado*, *caducado*) y fecha de caducidad.
-- **Alta de acceso**: crea un nuevo cliente y genera su fichero de configuración.
-- **Descarga de configuración** (`.ovpn`) de cada acceso activo.
-- **Retirar acceso**: revoca el certificado y regenera la CRL.
-- **Renovar acceso**: reemite el certificado de un dispositivo caducado.
-- **Configuración del servidor**: endpoint público, puerto, protocolo, **rango de
-  IPs**, **cifrados**, autenticación, DNS y rutas empujadas, CRL… y todas las
-  directivas del `server.conf`.
-- **Control del servicio**: arrancar, parar, reiniciar y recargar el servidor.
-- **Desconectar** una sesión activa.
-- **Registros**: últimas líneas del log del servidor VPN.
-- **Conexiones en tiempo real**: quién está conectado, desde cuándo y su tráfico.
-- **Interfaz de escritorio** (no móvil) con barra lateral, y **marca por protocolo**:
-  emblema y color según la VPN activa (OpenVPN en naranja, WireGuard en granate).
+---
 
-## Seguridad
+## Features
 
-- **Autenticación obligatoria.** Login con contraseña (**PBKDF2-SHA256**, 600k
-  iteraciones, comparación en tiempo constante) y sesión en **cookie firmada**
-  (`HttpOnly`, `SameSite=Strict`, `Secure` configurable). Todo el panel y la API
-  requieren sesión; solo `/login` y `/health` son públicos.
-- **Seguro por defecto.** En producción sin `VPNM_ADMIN_PASSWORD_HASH`, la app
-  **se niega a arrancar**. En sandbox usa la credencial de desarrollo `admin/admin`
-  mostrando un aviso.
-- **Anti–fuerza bruta**: bloqueo temporal por IP tras varios intentos fallidos.
-- **Sandbox por defecto.** En desarrollo apunta a `./sandbox/`, **nunca** a un
-  servidor VPN real. Apuntar a producción es una decisión explícita por
-  configuración (`VPNM_SANDBOX=false` + rutas reales).
-- **Validación estricta de nombres** (`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`) para
-  evitar inyección de comandos y *path traversal*.
-- El certificado del **servidor** está protegido (no se puede crear ni revocar).
-- Las operaciones reales delegan en `easy-rsa` mediante `subprocess` **sin shell**.
-- El material criptográfico real está excluido del repositorio (ver `.gitignore`).
+| Section | What you can do |
+|---------|-----------------|
+| **Overview** | Totals: active access, connected now, expired / revoked |
+| **Service** | Start, stop, restart, reload the VPN daemon |
+| **Configuration** | View and edit server parameters (endpoint, port, protocol, IP range, ciphers, DNS, routes, CRL…) and raw directives |
+| **Devices** | List all clients/certificates with plain-language status (*Access active*, *Access revoked*, *Expired*); add, revoke, renew |
+| **Connections** | Real-time list of who is connected, since when and their traffic; disconnect a session |
+| **Logs** | Last N lines of the server log |
+| **Activity** | Full audit trail of panel actions (logins, device changes, config edits, installs…) with search and level filter |
+| **Users** | Multi-user panel with roles: **Administrator**, **Operator**, **Read only** |
+| **System** | OS / package-manager detection, VPN service install status, one-click installer |
+| **My account** | Change password, enable/disable TOTP two-factor authentication |
 
-## Documentación
+### Backend support
+- **OpenVPN** — PKI index, `easy-rsa`, status file, `.ovpn` config download
+- **WireGuard** — `wg show`, peer management, QR code for mobile, editable `wg0.conf`
 
-- [Manual de instalación](docs/INSTALACION.md) — dev (sandbox) y producción.
-- [Manual de uso](docs/MANUAL-DE-USO.md) — el día a día del panel.
-- [Especificación y hoja de ruta](docs/ESPECIFICACION.md) · [Auditoría de seguridad](docs/AUDITORIA-SEGURIDAD.md)
+---
 
-## Puesta en marcha
+## Security
+
+- **Mandatory authentication.** PBKDF2-SHA256 (600,000 iterations, constant-time comparison) + signed session cookie (`HttpOnly`, `SameSite=Strict`, `Secure` configurable). Only `/login`, `/health` and `/api/version` are public.
+- **Secure by default.** Without `VPNM_ADMIN_PASSWORD_HASH` the app **refuses to start** in production. In sandbox mode it uses the development credential `admin/admin` and shows a warning.
+- **Login throttle.** IP-based temporary block after repeated failures.
+- **Sandbox by default.** Dev mode reads from `./sandbox/` — never touches a real VPN server. Production requires explicit opt-in (`VPNM_SANDBOX=false`).
+- **Strict name validation** (`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`) prevents command injection and path traversal.
+- `easy-rsa` called via `subprocess` **without shell**.
+- Cryptographic material excluded from the repository (see `.gitignore`).
+
+---
+
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/).  
+Every release is documented in [`CHANGELOG.md`](CHANGELOG.md).
+
+| Version | Date | Summary |
+|---------|------|---------|
+| **1.0.0** | 2026-07-03 | Full English UI, versioning system, `/api/version` endpoint, production config |
+| 0.3.0 | upstream | WireGuard, audit log, multi-user, 2FA, system installer, Prometheus metrics |
+| 0.2.0 | upstream | OpenVPN write ops, config editor, service control, email delivery |
+| 0.1.0 | upstream | Initial release — OpenVPN read-only panel |
+
+The running version is always visible in the **sidebar footer** of the panel and via:
 
 ```bash
+curl https://<host>/api/version
+# → {"version":"1.0.0"}
+
+curl https://<host>/health
+# → {"status":"ok","sandbox":false,"version":"1.0.0"}
+```
+
+---
+
+## Quick start (development / sandbox)
+
+```bash
+git clone https://github.com/jl-segurayuste/vpn-manager.git
+cd vpn-manager
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-python -m vpn_manager           # http://127.0.0.1:8200
+python -m vpn_manager        # http://127.0.0.1:8200
 ```
 
-En desarrollo (sandbox) entra con **admin / admin**. Para producción, copia
-`.env.example` a `.env`, genera tu contraseña con `python -m vpn_manager.hashpw`
-y fija `VPNM_SECRET_KEY`.
+Login with **admin / admin** (sandbox mode — demo data only, no real VPN server touched).
 
-## Tests
+---
+
+## Production setup
+
+### 1. Generate credentials
 
 ```bash
-pytest -q                              # pruebas unitarias/integración (parsers, API, auth, roles…)
-ruff check .
-pip install -e ".[e2e]" && pytest e2e/ # e2e de la interfaz en navegador (Playwright)
+# Generate password hash for your admin password
+.venv/bin/python -c "
+from vpn_manager.auth import hash_password
+import getpass
+print(hash_password(getpass.getpass('Password: ')))
+"
+
+# Generate a random secret key
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-## API
+### 2. Create `.env`
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET`  | `/` | Panel web (requiere sesión) |
-| `GET`/`POST` | `/login` | Página y envío de login |
-| `POST` | `/logout` | Cierra la sesión |
-| `GET`  | `/health` | Estado del servicio y modo sandbox (público) |
-| `GET`  | `/api/openvpn/status` | Estado del servidor OpenVPN |
-| `GET`  | `/api/openvpn/clients` | Lista de clientes/certificados |
-| `GET`  | `/api/openvpn/connections` | Conexiones activas |
-| `POST` | `/api/openvpn/clients` | Alta de cliente `{"name": "..."}` |
-| `POST` | `/api/openvpn/clients/{name}/revoke` | Retira el acceso |
-| `POST` | `/api/openvpn/clients/{name}/renew` | Renueva (reemite) el certificado |
-| `GET`  | `/api/openvpn/clients/{name}/config` | Descarga el `.ovpn` |
-| `POST` | `/api/openvpn/clients/{name}/save` | Guarda la config en una ruta del servidor |
-| `POST` | `/api/openvpn/clients/{name}/email` | Envía la config por correo |
-| `*`    | `/api/wireguard/*` | Equivalente para WireGuard (+ `/clients/{name}/qr`) |
-| `POST` | `/api/openvpn/connections/{name}/disconnect` | Corta la conexión activa |
-| `GET`  | `/api/openvpn/server` | Configuración del servidor (rangos, cifrados, DNS…) |
-| `GET`  | `/api/openvpn/logs` | Últimas líneas del registro (`?lines=80`) |
-| `POST` | `/api/openvpn/service/{action}` | `start`/`stop`/`restart`/`reload` |
+```env
+VPNM_SANDBOX=false
+VPNM_ADMIN_USER=admin
+VPNM_ADMIN_PASSWORD_HASH=pbkdf2_sha256$600000$<salt>$<hash>
+VPNM_SECRET_KEY=<64-char-hex>
+VPNM_COOKIE_SECURE=true          # set false behind a reverse proxy doing TLS termination
 
-## Configuración
+# OpenVPN paths (adjust to your server)
+VPNM_OPENVPN_PKI_INDEX=/etc/openvpn/easy-rsa/pki/index.txt
+VPNM_OPENVPN_STATUS_FILE=/var/log/openvpn/status.log
+VPNM_OPENVPN_SERVICE=openvpn@server
 
-Variables de entorno con prefijo `VPNM_` (ver `vpn_manager/config.py`):
-`VPNM_SANDBOX`, `VPNM_OPENVPN_PKI_INDEX`, `VPNM_OPENVPN_STATUS_FILE`,
-`VPNM_OPENVPN_SERVICE`, etc.
+# WireGuard paths (adjust to your interface name)
+VPNM_WIREGUARD_CONF=/etc/wireguard/wg0.conf
+VPNM_WIREGUARD_INTERFACE=wg0
+```
 
-## Hoja de ruta
+### 3. Run with PM2
 
-- [x] **Fase 1** — OpenVPN, solo lectura (estado, clientes, conexiones).
-- [x] **Fase 2** — OpenVPN, escritura (alta, revocación, descarga de config).
-- [x] **Fase 3** — WireGuard (peers, claves, `wg show`, QR, configuración editable).
-- [x] **Fase 4** — Historial y auditoría (página «Actividad», registro persistente).
-- [ ] **Fase 5** — Despliegue interno. *(Autenticación, 2FA, hardening y HTTPS-ready ya hechos; falta desplegarlo en el homelab y validarlo en vivo contra un servidor WireGuard real.)*
+```bash
+# ecosystem.config.cjs (inline env vars — PM2 doesn't support env_file natively)
+pm2 start ecosystem.config.cjs
+pm2 save
+```
 
-Detalle completo en [`docs/ESPECIFICACION.md`](docs/ESPECIFICACION.md).
+Or directly:
 
-## Licencia
+```bash
+python -m vpn_manager   # reads .env automatically via pydantic-settings
+```
 
-MIT — ver [`LICENSE`](LICENSE).
+---
+
+## API reference
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/` | ✅ | Web panel (requires session) |
+| `GET/POST` | `/login` | — | Login page and form submit |
+| `POST` | `/logout` | ✅ | Sign out |
+| `GET` | `/health` | — | `{"status","sandbox","version"}` |
+| `GET` | `/api/version` | — | `{"version":"1.0.0"}` |
+| `GET` | `/api/me` | ✅ | Current user info and permissions |
+| `GET` | `/api/users` | ✅ admin | List panel users and roles |
+| `POST` | `/api/users` | ✅ admin | Create user |
+| `PUT` | `/api/users/{username}` | ✅ admin | Update role or password |
+| `DELETE` | `/api/users/{username}` | ✅ admin | Delete user |
+| `GET` | `/api/me/2fa/setup` | ✅ | Generate TOTP QR |
+| `POST` | `/api/me/2fa/enable` | ✅ | Enable 2FA with code |
+| `POST` | `/api/me/2fa/disable` | ✅ | Disable 2FA |
+| `GET` | `/api/audit` | ✅ | Activity log (`?q=&level=&limit=`) |
+| `GET` | `/api/system` | ✅ | OS, package manager, installed VPN services |
+| `GET` | `/api/preflight` | ✅ admin | Security check results |
+| `POST` | `/api/system/install/{backend}` | ✅ admin | Install VPN packages |
+| `POST` | `/api/system/bootstrap/{backend}` | ✅ admin | Full server setup |
+| `GET` | `/api/openvpn/status` | ✅ | OpenVPN service status |
+| `GET` | `/api/openvpn/clients` | ✅ | List certificates / clients |
+| `GET` | `/api/openvpn/connections` | ✅ | Active connections |
+| `POST` | `/api/openvpn/clients` | ✅ op | Create client `{"name":"..."}` |
+| `POST` | `/api/openvpn/clients/{name}/revoke` | ✅ op | Revoke access |
+| `POST` | `/api/openvpn/clients/{name}/renew` | ✅ op | Renew (reissue) certificate |
+| `GET` | `/api/openvpn/clients/{name}/config` | ✅ | Download `.ovpn` |
+| `POST` | `/api/openvpn/clients/{name}/save` | ✅ op | Save config to server path |
+| `POST` | `/api/openvpn/clients/{name}/email` | ✅ op | Email config |
+| `GET` | `/api/openvpn/server` | ✅ | Server configuration |
+| `PUT` | `/api/openvpn/server` | ✅ admin | Update server configuration |
+| `GET` | `/api/openvpn/logs` | ✅ | Last log lines (`?lines=80`) |
+| `POST` | `/api/openvpn/service/{action}` | ✅ op | `start`/`stop`/`restart`/`reload` |
+| `POST` | `/api/openvpn/connections/{name}/disconnect` | ✅ op | Disconnect active session |
+| `*` | `/api/wireguard/*` | ✅ | WireGuard equivalents (+ `/clients/{name}/qr`) |
+| `GET` | `/metrics` | — | Prometheus text metrics |
+
+**Auth column:** `—` = public, `✅` = requires session, `✅ op` = requires operator or admin role, `✅ admin` = requires admin role.
+
+---
+
+## Configuration
+
+All settings use the `VPNM_` prefix (via `pydantic-settings`, loaded from `.env`).
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VPNM_SANDBOX` | `true` | `false` = production mode (real VPN server) |
+| `VPNM_HOST` | `127.0.0.1` | Bind address |
+| `VPNM_PORT` | `8200` | Listen port |
+| `VPNM_ADMIN_USER` | `admin` | Admin username |
+| `VPNM_ADMIN_PASSWORD_HASH` | — | PBKDF2-SHA256 hash (required in production) |
+| `VPNM_SECRET_KEY` | — | Session signing key (required in production) |
+| `VPNM_COOKIE_SECURE` | `true` | Set `false` when TLS is terminated upstream |
+| `VPNM_USERS_FILE` | `users.json` | Panel users database path |
+| `VPNM_OPENVPN_PKI_INDEX` | `./sandbox/index.txt` | OpenVPN PKI index |
+| `VPNM_OPENVPN_STATUS_FILE` | `./sandbox/status.log` | OpenVPN status file |
+| `VPNM_OPENVPN_SERVICE` | `openvpn@server` | systemd service name |
+| `VPNM_OPENVPN_LOG_FILE` | `/var/log/openvpn/openvpn.log` | Log path |
+| `VPNM_WIREGUARD_CONF` | `/etc/wireguard/wg0.conf` | WireGuard config |
+| `VPNM_WIREGUARD_INTERFACE` | `wg0` | Interface name |
+| `VPNM_WIREGUARD_LOG_FILE` | `/var/log/syslog` | WireGuard log source |
+| `VPNM_SMTP_HOST` | — | SMTP host for email delivery |
+| `VPNM_SMTP_PORT` | `587` | SMTP port |
+| `VPNM_SMTP_USER` | — | SMTP username |
+| `VPNM_SMTP_PASSWORD` | — | SMTP password |
+| `VPNM_SMTP_FROM` | — | Sender address |
+| `VPNM_ALLOW_INSTALL` | `false` | Enable system package installation |
+
+---
+
+## Running tests
+
+```bash
+# Unit + integration tests (parsers, API, auth, roles…)
+pytest -q
+
+# Linting
+ruff check .
+
+# End-to-end browser tests (Playwright)
+pip install -e ".[e2e]"
+playwright install chromium
+pytest e2e/
+```
+
+---
+
+## Documentation
+
+- [`docs/INSTALACION.md`](docs/INSTALACION.md) — full installation manual (dev + production)
+- [`docs/MANUAL-DE-USO.md`](docs/MANUAL-DE-USO.md) — day-to-day usage guide
+- [`docs/ESPECIFICACION.md`](docs/ESPECIFICACION.md) — specification and roadmap
+- [`docs/AUDITORIA-SEGURIDAD.md`](docs/AUDITORIA-SEGURIDAD.md) — security audit
+- [`CHANGELOG.md`](CHANGELOG.md) — version history
+- [`SECURITY.md`](SECURITY.md) — security policy and disclosure
+
+---
+
+## Roadmap
+
+- [x] **v0.1** — OpenVPN read-only (status, clients, connections, logs)
+- [x] **v0.2** — OpenVPN write ops (add, revoke, renew, download config)
+- [x] **v0.3** — WireGuard, audit log, multi-user, 2FA, system installer, Prometheus
+- [x] **v1.0** — Full English UI, versioning system, production config, README
+- [ ] **v1.1** — Live deploy on real WireGuard / OpenVPN server, HTTPS hardening
+
+---
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).
