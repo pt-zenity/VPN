@@ -154,6 +154,56 @@
     border-radius:11px;font-size:14px;box-shadow:0 8px 28px rgba(0,0,0,.22);opacity:0;
     transform:translateY(8px);transition:.2s;pointer-events:none}
   .toast.show{opacity:1;transform:none}
+
+  /* ── Create Account Modal ── */
+  .ca-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+  .ca-modal-overlay.open{display:flex}
+  .ca-modal{background:#fff;border-radius:18px;width:100%;max-width:700px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.22)}
+  .ca-modal-head{padding:22px 26px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+  .ca-modal-head h3{font-size:18px;font-weight:600;letter-spacing:-.01em}
+  .ca-modal-head .ca-close{border:0;background:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;padding:2px 6px;border-radius:8px}
+  .ca-modal-head .ca-close:hover{background:var(--bg);color:var(--ink)}
+  .ca-modal-body{padding:22px 26px;overflow-y:auto;flex:1}
+  .ca-modal-foot{padding:16px 26px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:#fafafa}
+  .ca-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;font-size:12.5px;font-weight:600}
+  .ca-badge.ovpn{background:#fdf2e6;color:#c26a10}
+  .ca-badge.wg{background:#e8f0fd;color:#2855b8}
+  .ca-section{margin-bottom:20px}
+  .ca-section label{display:block;font-size:13px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
+  .ca-section input[type=text]{width:100%;font:inherit;font-size:15px;padding:10px 13px;border:1px solid var(--line-strong);border-radius:10px;background:#fff}
+  .ca-section input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  .ca-config-box{background:#1b2422;color:#c8d8d0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.7;padding:16px;border-radius:11px;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow:auto}
+  .ca-qr-wrap{display:flex;justify-content:center;margin-top:16px}
+  .ca-qr-wrap img,.ca-qr-wrap svg{width:180px;height:180px;border-radius:12px;background:#fff;padding:8px;border:1px solid var(--line)}
+  .ca-actions-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .ca-hint{font-size:13px;color:var(--muted);margin-top:8px}
+  .ca-err{font-size:13.5px;color:var(--stop);margin-top:10px;padding:10px 14px;background:#fbeceb;border-radius:9px;display:none}
+  .ca-err.show{display:block}
+  .ca-success-banner{background:#edf7f0;border:1px solid #b2dfca;border-radius:11px;padding:14px 18px;display:flex;align-items:center;gap:10px;margin-bottom:18px}
+  .ca-success-banner .icon{font-size:22px}
+  .ca-success-banner .msg{font-size:14.5px;font-weight:500;color:#1f6b3a}
+
+  /* ── Create Account Page ── */
+  .ca-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:800px){.ca-grid{grid-template-columns:1fr}}
+  .ca-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .ca-card-head{padding:20px 22px 16px;border-bottom:1px solid var(--line)}
+  .ca-card-head h3{font-size:15.5px;font-weight:600}
+  .ca-card-head p{font-size:13.5px;color:var(--muted);margin-top:4px}
+  .ca-card-body{padding:20px 22px}
+  .ca-card-body input[type=text]{width:100%;font:inherit;font-size:14.5px;padding:9px 12px;border:1px solid var(--line-strong);border-radius:10px;background:#fff;margin-bottom:10px}
+  .ca-card-body input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  .ca-card-hint{font-size:12.5px;color:var(--faint);margin-bottom:14px}
+  .ca-card-err{font-size:13px;color:var(--stop);margin-top:8px;display:none}
+  .ca-card-err.show{display:block}
+  .ca-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ca-recent{margin-top:28px}
+  .ca-recent h2{font-size:13px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+  .ca-tabs{display:flex;gap:0;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;margin-bottom:16px;width:fit-content}
+  .ca-tab{padding:7px 18px;font:inherit;font-size:13.5px;font-weight:500;border:0;background:#fff;color:var(--muted);cursor:pointer}
+  .ca-tab.active{background:var(--accent);color:#fff}
+
 </style>
 </head>
 <body>
@@ -173,6 +223,7 @@
       <a data-page="service" onclick="showPage('service')">Service</a>
       <a data-page="server" onclick="showPage('server')">Configuration</a>
       <a data-page="devices" onclick="showPage('devices')">Devices <span class="n" id="nav-clients">·</span></a>
+      <a data-page="create-account" onclick="showPage('create-account')" id="nav-create">Create Account</a>
       <a data-page="connections" onclick="showPage('connections')">Connections <span class="n" id="nav-conns">·</span></a>
       <a data-page="logs" onclick="showPage('logs')">Logs</a>
       <a data-page="activity" id="nav-activity" onclick="showPage('activity')" style="display:none">Activity</a>
@@ -880,6 +931,193 @@ async function disconnectClient(name){
   }catch(e){ toast('Could not connect to the server.'); }
 }
 
+// ── Create Account Page ──────────────────────────────────────────────────
+let _caCurrentTab = 'openvpn';
+let _caCreatedName = '';
+let _caCreatedBackend = '';
+let _caCreatedConfig = '';
+
+function caTabSwitch(backend){
+  _caCurrentTab = backend;
+  document.getElementById('ca-tab-ovpn').classList.toggle('active', backend==='openvpn');
+  document.getElementById('ca-tab-wg').classList.toggle('active', backend==='wireguard');
+  caLoadRecent();
+}
+
+async function caLoadRecent(){
+  const el = document.getElementById('ca-recent-list');
+  if(!el) return;
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const r = await fetch('/api/'+_caCurrentTab+'/clients');
+    if(!r.ok){ el.innerHTML='<div class="err">Could not load accounts.</div>'; return; }
+    const clients = await r.json();
+    if(!clients.length){ el.innerHTML='<div class="empty">No accounts yet.</div>'; return; }
+    el.innerHTML = clients.map(c => {
+      const st = c.status==='valid'?'ok':c.status==='revoked'?'stop':'warn';
+      const label = c.status==='valid'?'Active':c.status==='revoked'?'Revoked':'Expired';
+      const ext = _caCurrentTab==='wireguard' ? 'conf' : 'ovpn';
+      const dlUrl = '/api/'+_caCurrentTab+'/clients/'+encodeURIComponent(c.name)+'/config';
+      const qrBtn = _caCurrentTab==='wireguard' ? `<button class="act" onclick="caShowQR('${c.name}')">QR Code</button>` : '';
+      return `<div class="row">
+        <div>
+          <div class="name">${esc(c.name)}</div>
+          <div class="meta">${_caCurrentTab==='openvpn'?'OpenVPN':'WireGuard'} · ${c.expires_at ? 'Expires '+c.expires_at.slice(0,10) : 'No expiry'}</div>
+        </div>
+        <div class="right">
+          <span class="state s-${st}"><span class="dot ${st}"></span>${label}</span>
+          <div class="actions">
+            ${c.status==='valid'?`<a class="act" href="${dlUrl}" download="${c.name}.${ext}">Download</a>`:''}
+            ${qrBtn}
+            ${c.status==='valid' && can('clients:write') ? `<button class="act danger" onclick="caRevoke('${esc(c.name)}')">Revoke</button>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ el.innerHTML='<div class="err">Connection error.</div>'; }
+}
+
+async function caCreate(backend){
+  const inputId = backend==='openvpn' ? 'ovpn-new-name' : 'wg-new-name';
+  const btnId   = backend==='openvpn' ? 'ovpn-create-btn' : 'wg-create-btn';
+  const errId   = backend==='openvpn' ? 'ovpn-err' : 'wg-err';
+  const input   = document.getElementById(inputId);
+  const btn     = document.getElementById(btnId);
+  const errEl   = document.getElementById(errId);
+  const name    = input.value.trim();
+
+  errEl.classList.remove('show'); errEl.textContent='';
+  if(!name){ errEl.textContent='Enter a name for this account.'; errEl.classList.add('show'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ca-spinner"></span>Creating…';
+
+  try{
+    const r = await fetch('/api/'+backend+'/clients', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name})
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok){ errEl.textContent = d.detail||'Could not create account.'; errEl.classList.add('show'); return; }
+
+    // Fetch the config file
+    const cfgR = await fetch('/api/'+backend+'/clients/'+encodeURIComponent(name)+'/config');
+    const cfgText = cfgR.ok ? await cfgR.text() : '(config unavailable)';
+
+    _caCreatedName    = name;
+    _caCreatedBackend = backend;
+    _caCreatedConfig  = cfgText;
+
+    input.value = '';
+    await caModalOpen(name, backend, cfgText);
+    
+    // Refresh list if current tab matches
+    if(_caCurrentTab === backend) caLoadRecent();
+    toast('Account created ✓');
+
+  }catch(e){
+    errEl.textContent = 'Could not connect to the server.'; errEl.classList.add('show');
+  }finally{
+    btn.disabled = false;
+    const label = backend==='openvpn' ? 'Create OpenVPN Account' : 'Create WireGuard Account';
+    btn.innerHTML = label;
+  }
+}
+
+async function caModalOpen(name, backend, cfgText){
+  const ext = backend==='wireguard' ? 'conf' : 'ovpn';
+  document.getElementById('ca-modal-title').textContent = 'Account Created: ' + name;
+  document.getElementById('ca-modal-msg').textContent   =
+    (backend==='openvpn'?'OpenVPN':'WireGuard') + ' account "' + name + '" is ready to use.';
+  document.getElementById('ca-config-text').textContent = cfgText;
+  document.getElementById('ca-config-hint').textContent = 'Save this file as ' + name + '.' + ext;
+
+  // QR code for WireGuard
+  const qrSection = document.getElementById('ca-qr-section');
+  if(backend==='wireguard'){
+    qrSection.style.display='';
+    const qrContainer = document.getElementById('ca-qr-container');
+    qrContainer.innerHTML='<div style="color:var(--muted);font-size:13px">Loading QR…</div>';
+    try{
+      const qrR = await fetch('/api/wireguard/clients/'+encodeURIComponent(name)+'/qr');
+      if(qrR.ok){
+        const svg = await qrR.text();
+        qrContainer.innerHTML = svg;
+        // Style the svg
+        const svgEl = qrContainer.querySelector('svg');
+        if(svgEl){ svgEl.style.cssText='width:180px;height:180px;border-radius:12px;background:#fff;padding:8px;border:1px solid var(--line)'; }
+      } else {
+        qrContainer.innerHTML='<div style="color:var(--muted);font-size:13px">QR not available</div>';
+      }
+    }catch(e){ qrContainer.innerHTML='<div style="color:var(--muted);font-size:13px">QR not available</div>'; }
+  } else {
+    qrSection.style.display='none';
+  }
+
+  document.getElementById('ca-modal-overlay').classList.add('open');
+}
+
+function caModalClose(){
+  document.getElementById('ca-modal-overlay').classList.remove('open');
+}
+
+function caDownloadConfig(){
+  const ext  = _caCreatedBackend==='wireguard' ? 'conf' : 'ovpn';
+  const blob = new Blob([_caCreatedConfig], {type:'text/plain'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=_caCreatedName+'.'+ext; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function caCopyConfig(){
+  navigator.clipboard.writeText(_caCreatedConfig).then(()=>toast('Copied to clipboard ✓')).catch(()=>toast('Copy failed'));
+}
+
+async function caShowQR(name){
+  _caCreatedName=''; _caCreatedBackend='wireguard'; _caCreatedConfig='';
+  document.getElementById('ca-modal-title').textContent = 'WireGuard QR: ' + name;
+  document.getElementById('ca-modal-msg').textContent   = 'Scan with the WireGuard mobile app.';
+  document.getElementById('ca-config-text').textContent = 'Loading…';
+  document.getElementById('ca-config-hint').textContent = '';
+  const qrSection = document.getElementById('ca-qr-section');
+  qrSection.style.display='';
+  const qrContainer = document.getElementById('ca-qr-container');
+  qrContainer.innerHTML='Loading…';
+  document.getElementById('ca-modal-overlay').classList.add('open');
+
+  try{
+    const [cfgR, qrR] = await Promise.all([
+      fetch('/api/wireguard/clients/'+encodeURIComponent(name)+'/config'),
+      fetch('/api/wireguard/clients/'+encodeURIComponent(name)+'/qr')
+    ]);
+    if(cfgR.ok){ const t=await cfgR.text(); _caCreatedConfig=t; document.getElementById('ca-config-text').textContent=t; document.getElementById('ca-config-hint').textContent='Save as '+name+'.conf'; _caCreatedName=name; }
+    if(qrR.ok){ const svg=await qrR.text(); qrContainer.innerHTML=svg; const s=qrContainer.querySelector('svg'); if(s) s.style.cssText='width:180px;height:180px;border-radius:12px;background:#fff;padding:8px;border:1px solid var(--line)'; }
+    else { qrContainer.innerHTML='<div style="color:var(--muted);font-size:13px">QR not available</div>'; }
+  }catch(e){ qrContainer.innerHTML='<div style="color:var(--muted);font-size:13px">Connection error</div>'; }
+}
+
+async function caRevoke(name){
+  if(!confirm('Revoke access for "'+name+'"?\n\nThis cannot be undone.')) return;
+  try{
+    const r = await fetch('/api/'+_caCurrentTab+'/clients/'+encodeURIComponent(name)+'/revoke',{method:'POST'});
+    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'Could not revoke.'); return; }
+    toast('Revoked ✓'); caLoadRecent();
+  }catch(e){ toast('Connection error.'); }
+}
+
+// Close modal on overlay click
+document.getElementById('ca-modal-overlay').addEventListener('click', function(e){
+  if(e.target===this) caModalClose();
+});
+
+// Load recent when page shown
+const _origShowPage = showPage;
+function showPage(id){
+  _origShowPage(id);
+  if(id==='create-account') caLoadRecent();
+}
+
 (async () => {
   await loadMe();
   applyBackend('openvpn');
@@ -888,5 +1126,40 @@ async function disconnectClient(name){
 })();
 setInterval(load, 10000);
 </script>
+
+<!-- Create Account Result Modal -->
+<div class="ca-modal-overlay" id="ca-modal-overlay">
+  <div class="ca-modal">
+    <div class="ca-modal-head">
+      <h3 id="ca-modal-title">Account Created</h3>
+      <button class="ca-close" onclick="caModalClose()">&#x2715;</button>
+    </div>
+    <div class="ca-modal-body">
+      <div class="ca-success-banner">
+        <span class="icon">&#x2705;</span>
+        <div class="msg" id="ca-modal-msg">Account created successfully.</div>
+      </div>
+      <div class="ca-section">
+        <label>Configuration File</label>
+        <div class="ca-config-box" id="ca-config-text">Loading…</div>
+        <div class="ca-actions-row">
+          <button class="btn primary" onclick="caDownloadConfig()">&#x21E9; Download Config</button>
+          <button class="btn" onclick="caCopyConfig()">&#x29C9; Copy</button>
+          <a id="ca-dl-link" style="display:none"></a>
+        </div>
+        <p class="ca-hint" id="ca-config-hint"></p>
+      </div>
+      <div id="ca-qr-section" class="ca-section" style="display:none">
+        <label>Scan QR Code (mobile)</label>
+        <div class="ca-qr-wrap" id="ca-qr-container">Loading QR…</div>
+        <p class="ca-hint">Scan this code with the WireGuard mobile app to import the config.</p>
+      </div>
+    </div>
+    <div class="ca-modal-foot">
+      <button class="btn" onclick="caModalClose()">Close</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
