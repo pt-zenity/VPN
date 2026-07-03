@@ -2,428 +2,1958 @@
 <html lang="en">
 <head>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VPN Manager</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VPN Manager</title>
 <style>
-  :root{
-    --bg:#f4f5f4; --panel:#ffffff; --ink:#1c1d21; --muted:#6b6f76; --faint:#9a9ea6;
-    --line:#ecedef; --line-strong:#e2e3e6;
-    /* Brand color based on installed VPN (adjusted by JS). Default: OpenVPN. */
-    --accent:#e07d22; --accent-soft:#fdf2e6;
-    --sidebar:#1b2422; --sidebar-ink:#cfd8d4; --sidebar-active:#2a3a36;
-    --ok:#3a8f54; --warn:#b07a1e; --stop:#b3493f; --radius:14px;
+/* ════════════════════════════════════════════════
+   DESIGN TOKENS
+════════════════════════════════════════════════ */
+:root {
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --surface-2: #f7f8fa;
+  --ink: #111827;
+  --ink-2: #374151;
+  --muted: #6b7280;
+  --faint: #9ca3af;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+
+  /* Sidebar */
+  --sb: #0f1923;
+  --sb-2: #1a2736;
+  --sb-3: #243447;
+  --sb-ink: #cbd5e1;
+  --sb-ink-2: #64748b;
+  --sb-active: #1e3a5f;
+
+  /* Accent — dynamic via JS */
+  --accent: #e07d22;
+  --accent-2: #c96b14;
+  --accent-soft: #fef3e2;
+  --accent-text: #92400e;
+
+  /* Semantic */
+  --ok: #059669;
+  --ok-soft: #ecfdf5;
+  --warn: #d97706;
+  --warn-soft: #fffbeb;
+  --stop: #dc2626;
+  --stop-soft: #fef2f2;
+
+  /* Geometry */
+  --r-sm: 8px;
+  --r: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  --shadow: 0 4px 12px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.04);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,.12), 0 4px 12px rgba(0,0,0,.06);
+
+  /* Layout */
+  --sb-w: 260px;
+  --topbar-h: 60px;
+}
+
+/* ════════════════════════════════════════════════
+   RESET & BASE
+════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100%;
+}
+
+/* ════════════════════════════════════════════════
+   APP SHELL
+════════════════════════════════════════════════ */
+.app { display: flex; min-height: 100vh; }
+
+/* ── Sidebar overlay (mobile) ── */
+.sb-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 199;
+  backdrop-filter: blur(2px);
+}
+.sb-overlay.open { display: block; }
+
+/* ── Sidebar ── */
+.side {
+  width: var(--sb-w);
+  flex: none;
+  background: var(--sb);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 200;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+  scrollbar-width: none;
+}
+.side::-webkit-scrollbar { display: none; }
+
+/* ── Sidebar header ── */
+.sb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 18px 0;
+  flex-shrink: 0;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-icon {
+  width: 34px; height: 34px;
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.brand-icon svg { width: 18px; height: 18px; fill: #fff; }
+.brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -.01em;
+}
+.brand-name span { color: var(--accent); }
+.sb-close {
+  display: none;
+  border: none;
+  background: var(--sb-3);
+  color: var(--sb-ink);
+  width: 32px; height: 32px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* ── Backend badge ── */
+.sb-backend {
+  margin: 18px 14px 0;
+  background: var(--sb-2);
+  border: 1px solid var(--sb-3);
+  border-radius: var(--r);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sb-backend .logo-img {
+  width: 30px; height: 30px;
+  border-radius: var(--r-sm);
+  object-fit: contain;
+  flex-shrink: 0;
+  background: var(--sb-3);
+}
+.sb-backend .bk-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+}
+.sb-backend .bk-sub {
+  font-size: 11.5px;
+  color: var(--sb-ink-2);
+  margin-top: 1px;
+}
+
+/* ── Service chip ── */
+.sb-svc {
+  margin: 8px 14px 0;
+  background: var(--sb-2);
+  border: 1px solid var(--sb-3);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sb-svc .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sb-svc .svc-t {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+}
+.sb-svc .svc-s {
+  font-size: 11.5px;
+  color: var(--sb-ink-2);
+}
+
+/* ── Nav ── */
+.sb-nav {
+  padding: 10px 10px 0;
+  flex: 1;
+}
+.sb-section {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--sb-ink-2);
+  padding: 14px 10px 6px;
+}
+.sb-section:first-child { padding-top: 6px; }
+nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--sb-ink);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  position: relative;
+  margin-bottom: 1px;
+}
+nav a .nav-icon {
+  width: 18px; height: 18px;
+  opacity: .6;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+nav a:hover {
+  background: var(--sb-2);
+  color: #fff;
+}
+nav a:hover .nav-icon { opacity: .9; }
+nav a.active {
+  background: var(--sb-active);
+  color: #fff;
+}
+nav a.active .nav-icon { opacity: 1; }
+nav a.active::before {
+  content: '';
+  position: absolute;
+  left: -10px; top: 6px; bottom: 6px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 3px 3px 0;
+}
+nav a .badge {
+  margin-left: auto;
+  background: var(--sb-3);
+  color: var(--sb-ink);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 1px 7px;
+  min-width: 20px;
+  text-align: center;
+}
+nav a.active .badge {
+  background: rgba(255,255,255,.15);
+  color: #fff;
+}
+
+/* ── Backend switch ── */
+.sb-switch {
+  margin: 12px 14px 0;
+  background: var(--sb-2);
+  border: 1px solid var(--sb-3);
+  border-radius: var(--r);
+  padding: 3px;
+  display: flex;
+  gap: 3px;
+}
+.sb-switch button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--sb-ink-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 4px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.sb-switch button.on {
+  background: var(--sb-3);
+  color: #fff;
+}
+.sb-switch button[disabled] {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* ── Sidebar footer ── */
+.sb-foot {
+  padding: 14px 14px 18px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--sb-3);
+  margin-top: 10px;
+}
+.me-chip {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--sb-2);
+  border: 1px solid var(--sb-3);
+  border-radius: var(--r);
+  margin-bottom: 10px;
+}
+.me-chip .me-av {
+  width: 30px; height: 30px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.me-chip .me-u { font-size: 13px; font-weight: 600; color: #fff; }
+.me-chip .me-r { font-size: 11.5px; color: var(--sb-ink-2); margin-top: 1px; }
+.sb-logout {
+  width: 100%;
+  border: 1px solid var(--sb-3);
+  background: transparent;
+  color: var(--sb-ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 9px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  margin-bottom: 10px;
+}
+.sb-logout:hover { background: var(--sb-2); color: #fff; }
+.ver-badge {
+  text-align: center;
+  font-size: 11px;
+  color: var(--sb-ink-2);
+  letter-spacing: .02em;
+}
+
+/* ════════════════════════════════════════════════
+   MAIN CONTENT AREA
+════════════════════════════════════════════════ */
+.main-wrap {
+  flex: 1;
+  min-width: 0;
+  margin-left: var(--sb-w);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── Top bar ── */
+.topbar {
+  height: var(--topbar-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-shrink: 0;
+}
+.topbar-hamburger {
+  display: none;
+  border: none;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  width: 36px; height: 36px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.topbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--ink);
+}
+.topbar-title span { color: var(--accent); }
+.topbar-spacer { flex: 1; }
+.topbar-svc {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.topbar-svc .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+}
+
+/* ── Page inner ── */
+main {
+  flex: 1;
+  padding: 28px 28px 60px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ════════════════════════════════════════════════
+   PAGE SECTIONS
+════════════════════════════════════════════════ */
+section.page { display: none; }
+section.page.active { display: block; }
+
+.page-header {
+  margin-bottom: 24px;
+}
+.page-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.page-header .page-sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 4px;
+  max-width: 65ch;
+  line-height: 1.55;
+}
+.sechead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.sechead-left h2 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--faint);
+}
+.sechead-left .hint {
+  color: var(--muted);
+  font-size: 13.5px;
+  margin-top: 3px;
+  max-width: 65ch;
+}
+
+/* ════════════════════════════════════════════════
+   STAT CARDS
+════════════════════════════════════════════════ */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+.stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+  opacity: .5;
+}
+.stat .k {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--faint);
+  margin-bottom: 10px;
+}
+.stat .v {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  color: var(--ink);
+  line-height: 1;
+}
+.stat .v small {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.stat .v.ok { color: var(--ok); }
+.stat .v.stop { color: var(--stop); }
+
+/* ════════════════════════════════════════════════
+   PANEL / CARD
+════════════════════════════════════════════════ */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.panel + .panel { margin-top: 16px; }
+
+/* ── Controls bar ── */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.controls .grp {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* ════════════════════════════════════════════════
+   BUTTONS
+════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, box-shadow .15s, transform .1s;
+  white-space: nowrap;
+  min-height: 36px;
+  text-decoration: none;
+}
+.btn:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn.primary:hover {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+}
+.btn.danger {
+  border-color: #fca5a5;
+  color: var(--stop);
+  background: var(--stop-soft);
+}
+.btn.danger:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+.btn.success {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #fff;
+}
+.btn[disabled] {
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ════════════════════════════════════════════════
+   LIST ROWS
+════════════════════════════════════════════════ */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+.row:last-child { border-bottom: none; }
+.row:hover { background: var(--surface-2); }
+.row .name { font-weight: 600; font-size: 14.5px; color: var(--ink); }
+.row .meta {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.row .right {
+  margin-left: auto;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Status indicators ── */
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot.ok  { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.dot.warn{ background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
+.dot.stop{ background: var(--stop); box-shadow: 0 0 0 3px var(--stop-soft); }
+.dot.idle{ background: var(--faint); }
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.state.s-ok   { color: var(--ok); }
+.state.s-warn { color: var(--warn); }
+.state.s-stop { color: var(--stop); }
+
+/* ── Pill badges ── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+.pill.ok   { background: var(--ok-soft);   color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.stop { background: var(--stop-soft); color: var(--stop); }
+.pill.idle { background: var(--surface-2); color: var(--faint); }
+
+/* ── Action links ── */
+.actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.act {
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--accent);
+  padding: 0;
+  text-decoration: none;
+  transition: opacity .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.act:hover { opacity: .75; }
+.act.danger { color: var(--stop); }
+
+/* ── Sub text ── */
+.sub {
+  color: var(--faint);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ════════════════════════════════════════════════
+   ADD FORM
+════════════════════════════════════════════════ */
+.addform {
+  display: none;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  flex-wrap: wrap;
+}
+.addform.open { display: flex; }
+.addform input {
+  flex: 1;
+  min-width: 160px;
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  transition: border-color .15s, box-shadow .15s;
+}
+.addform input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.formhint {
+  padding: 0 18px 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.formhint.bad { color: var(--stop); }
+
+/* ════════════════════════════════════════════════
+   EMPTY / ERROR STATES
+════════════════════════════════════════════════ */
+.empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--faint);
+  font-size: 14px;
+}
+.empty::before {
+  content: '—';
+  display: block;
+  font-size: 28px;
+  margin-bottom: 8px;
+  opacity: .3;
+}
+.err {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--stop);
+  font-size: 14px;
+}
+
+/* ════════════════════════════════════════════════
+   SERVER GRID
+════════════════════════════════════════════════ */
+.srvgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.srv-item {
+  padding: 16px 18px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.srv-item:nth-child(3n) { border-right: none; }
+.srv-item:nth-last-child(-n+3) { border-bottom: none; }
+.srv-item .k {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--faint);
+  margin-bottom: 6px;
+}
+.srv-item .v {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  word-break: break-word;
+}
+.srv-item .v.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+.srv-item .v .tag {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 5px;
+  padding: 1px 8px;
+  margin: 2px 3px 2px 0;
+}
+
+/* ── Config accordion ── */
+.allcfg {
+  border-top: 1px solid var(--border);
+}
+.allcfg summary {
+  padding: 13px 18px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--accent);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  transition: background .12s;
+}
+.allcfg summary:hover { background: var(--surface-2); }
+.allcfg summary::-webkit-details-marker { display: none; }
+.allcfg summary::before {
+  content: '▶';
+  font-size: 9px;
+  transition: transform .2s;
+}
+.allcfg[open] summary::before { transform: rotate(90deg); }
+.allcfg pre {
+  margin: 0;
+  padding: 4px 18px 18px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+}
+
+/* ════════════════════════════════════════════════
+   CONFIG FORM
+════════════════════════════════════════════════ */
+.cfgform { padding: 0; }
+.cfgsub {
+  padding: 14px 18px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--faint);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.cfgrow {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  transition: background .12s;
+}
+.cfgrow:hover { background: #fafbff; }
+.cfgrow:first-child { border-top: none; }
+.cfgrow .lab {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding-top: 9px;
+}
+.cfgrow .lab small {
+  display: block;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
+  margin-top: 3px;
+  line-height: 1.45;
+}
+.cfgrow input[type=text],
+.cfgrow input[type=number],
+.cfgrow select {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  transition: border-color .15s, box-shadow .15s;
+}
+.cfgrow input:focus,
+.cfgrow select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.cfgrow .bad { border-color: var(--stop) !important; }
+.cfgrow.toggle .ctrl { display: flex; align-items: center; gap: 9px; padding-top: 9px; }
+.cfgrow .errmsg {
+  color: var(--stop);
+  font-size: 12px;
+  margin-top: 5px;
+  display: none;
+}
+.advrow {
+  display: grid;
+  grid-template-columns: 200px 1fr 36px;
+  gap: 8px;
+  padding: 7px 18px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+}
+.advrow input {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+}
+.advrow input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.advrow .del {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--stop);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  width: 32px; height: 32px;
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s;
+}
+.advrow .del:hover { background: var(--stop-soft); }
+.cfgbar {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  flex-wrap: wrap;
+}
+.cfgbar .addadv { margin-right: auto; }
+
+/* ════════════════════════════════════════════════
+   LOG BOX
+════════════════════════════════════════════════ */
+.logbox {
+  margin: 0;
+  padding: 16px 18px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 420px;
+  overflow: auto;
+  background: #fafbfc;
+}
+.logbox .lg-err { color: var(--stop); }
+.logbox .lg-ok  { color: var(--ok); }
+
+/* ════════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════════ */
+.toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  background: #111827;
+  color: #f9fafb;
+  padding: 11px 18px;
+  border-radius: var(--r);
+  font-size: 13.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .22s, transform .22s;
+  pointer-events: none;
+  z-index: 999;
+  max-width: 320px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ════════════════════════════════════════════════
+   CREATE ACCOUNT PAGE
+════════════════════════════════════════════════ */
+.ca-tabs {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-bottom: 18px;
+  width: fit-content;
+  box-shadow: var(--shadow-sm);
+}
+.ca-tab {
+  padding: 9px 22px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  border: none;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.ca-tab:hover { background: var(--surface-2); color: var(--ink); }
+.ca-tab.active { background: var(--accent); color: #fff; }
+.ca-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+.ca-card-head {
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.ca-card-head h3 { font-size: 15px; font-weight: 700; color: var(--ink); }
+.ca-card-head p { font-size: 13.5px; color: var(--muted); margin-top: 4px; }
+.ca-card-body { padding: 20px; }
+.ca-card-body input[type=text] {
+  width: 100%;
+  font: inherit;
+  font-size: 14.5px;
+  padding: 10px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  margin-bottom: 12px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ca-card-body input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.ca-card-hint { font-size: 12.5px; color: var(--faint); margin-bottom: 14px; }
+.ca-card-err { font-size: 13px; color: var(--stop); margin-top: 8px; display: none; }
+.ca-card-err.show { display: block; }
+.ca-spinner {
+  display: inline-block;
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.ca-recent { margin-top: 28px; }
+.ca-recent > h2 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--faint);
+  margin-bottom: 12px;
+}
+
+/* ════════════════════════════════════════════════
+   MODAL
+════════════════════════════════════════════════ */
+.ca-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+.ca-modal-overlay.open { display: flex; }
+.ca-modal {
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(0,0,0,.06);
+}
+.ca-modal-head {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ca-modal-head h3 { font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+.ca-close {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  width: 30px; height: 30px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+}
+.ca-close:hover { background: var(--border); color: var(--ink); }
+.ca-modal-body {
+  padding: 22px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.ca-modal-foot {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  background: var(--surface-2);
+}
+.ca-section { margin-bottom: 22px; }
+.ca-section label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 8px;
+}
+.ca-section input[type=text] {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  padding: 10px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.ca-section input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.ca-config-box {
+  background: #1a2332;
+  color: #a8c8b8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.8;
+  padding: 16px 18px;
+  border-radius: var(--r);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow: auto;
+}
+.ca-actions-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.ca-hint { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.ca-err {
+  font-size: 13.5px;
+  color: var(--stop);
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--stop-soft);
+  border-radius: var(--r-sm);
+  border: 1px solid #fca5a5;
+  display: none;
+}
+.ca-err.show { display: block; }
+.ca-success-banner {
+  background: var(--ok-soft);
+  border: 1px solid #6ee7b7;
+  border-radius: var(--r);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.ca-success-banner .icon { font-size: 22px; flex-shrink: 0; }
+.ca-success-banner .msg { font-size: 14px; font-weight: 600; color: #065f46; }
+.ca-qr-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+.ca-qr-wrap img,
+.ca-qr-wrap svg {
+  width: 180px; height: 180px;
+  border-radius: var(--r);
+  background: #fff;
+  padding: 8px;
+  border: 1px solid var(--border);
+}
+.ca-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.ca-badge.ovpn { background: #fef3e2; color: #c26a10; }
+.ca-badge.wg   { background: #eff6ff; color: #1d4ed8; }
+
+/* ════════════════════════════════════════════════
+   SYSTEM PAGE
+════════════════════════════════════════════════ */
+.sys-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+/* ════════════════════════════════════════════════
+   AUDIT / ACTIVITY SEARCH BAR
+════════════════════════════════════════════════ */
+.search-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.search-bar input[type=text] {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  width: 200px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.search-bar input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.search-bar select {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.search-bar select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ════════════════════════════════════════════════
+   ACCOUNT PAGE (2FA)
+════════════════════════════════════════════════ */
+.twofa-setup {
+  margin-top: 14px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.qrbox {
+  flex: none;
+  background: #fff;
+  border: 2px solid var(--border);
+  border-radius: var(--r);
+  padding: 8px;
+  width: 144px; height: 144px;
+}
+.qrbox svg { width: 128px; height: 128px; display: block; }
+
+/* ════════════════════════════════════════════════
+   FORM INPUTS (inline / ad-hoc)
+════════════════════════════════════════════════ */
+input.inline-input {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  transition: border-color .15s, box-shadow .15s;
+}
+input.inline-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+select.inline-select {
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* ════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+════════════════════════════════════════════════ */
+
+/* ── Tablet (≤ 1024px) ── */
+@media (max-width: 1024px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .sys-stats { grid-template-columns: repeat(3, 1fr); }
+  .srvgrid { grid-template-columns: repeat(2, 1fr); }
+  .srv-item:nth-child(3n) { border-right: 1px solid var(--border); }
+  .srv-item:nth-child(2n) { border-right: none; }
+  .srv-item:nth-last-child(-n+3) { border-bottom: 1px solid var(--border); }
+  .srv-item:nth-last-child(-n+2) { border-bottom: none; }
+  .cfgrow { grid-template-columns: 180px 1fr; }
+}
+
+/* ── Mobile (≤ 768px) ── */
+@media (max-width: 768px) {
+  :root { --topbar-h: 56px; }
+
+  /* Sidebar becomes off-canvas drawer */
+  .side {
+    transform: translateX(-100%);
+    box-shadow: none;
   }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--ink);min-height:100vh;
-    font:15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
-    -webkit-font-smoothing:antialiased;letter-spacing:-.005em}
-  .app{display:flex;min-height:100vh}
+  .side.open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg);
+  }
+  .sb-close { display: flex; }
 
-  /* ── Sidebar ── */
-  .side{width:248px;flex:none;background:var(--sidebar);color:var(--sidebar-ink);
-    display:flex;flex-direction:column;padding:22px 16px;position:sticky;top:0;height:100vh}
-  .side .brand{color:#fff;font-size:16px;font-weight:600;padding:4px 10px 16px;letter-spacing:.01em}
-  .side .brand span{color:var(--accent)}
-  .backend-badge{display:flex;align-items:center;gap:11px;background:#243330;border-radius:11px;
-    padding:11px 13px;margin-bottom:10px}
-  .backend-badge .logo{flex:none;color:var(--accent);display:flex;align-items:center}
-  .backend-badge .logo-img{width:26px;height:26px;border-radius:7px;display:block;object-fit:contain}
-  .backend-badge .bk-name{font-size:14.5px;font-weight:600;color:#fff;line-height:1.2}
-  .backend-badge .bk-sub{font-size:11.5px;color:#8a9893}
-  .svc-chip{display:flex;align-items:center;gap:9px;background:#243330;border-radius:11px;
-    padding:11px 13px;margin-bottom:18px}
-  .svc-chip .dot{width:9px;height:9px;border-radius:50%;flex:none}
-  .svc-chip .t{font-size:13.5px;font-weight:500;color:#fff}
-  .svc-chip .s{font-size:11.5px;color:#8a9893}
-  nav{display:flex;flex-direction:column;gap:2px}
-  nav a{color:var(--sidebar-ink);text-decoration:none;font-size:14px;font-weight:500;cursor:pointer;
-    padding:9px 12px;border-radius:9px;display:flex;justify-content:space-between;align-items:center}
-  nav a:hover{background:var(--sidebar-active);color:#fff}
-  nav a.active{background:var(--sidebar-active);color:#fff}
-  nav a .n{background:#33433f;color:#bcd;font-size:11.5px;font-weight:600;border-radius:20px;
-    padding:1px 8px;min-width:22px;text-align:center}
-  .side .switch{margin-top:20px;background:#243330;border-radius:10px;padding:3px;display:flex;gap:2px}
-  .side .switch button{flex:1;border:0;background:transparent;color:#8a9893;font:inherit;font-size:13px;
-    font-weight:500;padding:7px;border-radius:8px;cursor:pointer}
-  .side .switch button.on{background:#33433f;color:#fff}
-  .side .switch button[disabled]{opacity:.5;cursor:not-allowed}
-  .side .foot{margin-top:auto;padding-top:16px}
-  .me-chip{display:flex;flex-direction:column;gap:1px;padding:9px 12px;margin-bottom:8px;
-    background:#243330;border-radius:10px}
-  .me-chip .me-u{font-size:13px;font-weight:600;color:#fff}
-  .me-chip .me-r{font-size:11.5px;color:#8a9893}
-  .qrbox{flex:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px;width:144px;height:144px}
-  .qrbox svg{width:128px;height:128px;display:block}
-  .side .logout{width:100%;border:1px solid #33433f;background:transparent;color:var(--sidebar-ink);
-    font:inherit;font-size:13.5px;font-weight:500;padding:9px;border-radius:10px;cursor:pointer}
-  .side .logout:hover{background:var(--sidebar-active);color:#fff}
+  .main-wrap { margin-left: 0; }
 
-  /* ── Content ── */
-  main{flex:1;min-width:0;padding:34px 40px 60px}
-  .wrap{max-width:1180px;margin:0 auto}
-  h1{font-size:25px;font-weight:600;letter-spacing:-.02em}
-  .lead{color:var(--muted);font-size:15px;margin-top:6px;margin-bottom:8px;max-width:78ch}
+  /* Topbar */
+  .topbar { padding: 0 16px; }
+  .topbar-hamburger { display: flex; }
+  .topbar-svc { display: none; }
 
-  section{margin-top:14px}
-  section.page{display:none}
-  section.page.active{display:block}
-  .sechead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:13px}
-  section h2{font-size:13px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--faint)}
-  section .hint{color:var(--muted);font-size:14px;margin-top:3px}
+  /* Main content */
+  main { padding: 18px 16px 48px; }
 
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px}
-  .stat .k{color:var(--faint);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
-  .stat .v{font-size:28px;font-weight:600;margin-top:8px;letter-spacing:-.02em}
-  .stat .v small{font-size:14px;font-weight:500;color:var(--muted)}
+  /* Stats */
+  .stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat { padding: 14px 16px; }
+  .stat .v { font-size: 24px; }
+  .sys-stats { grid-template-columns: 1fr; gap: 10px; }
 
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
-  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:18px 20px}
-  .controls .grp{display:flex;gap:10px;margin-left:auto}
+  /* Server grid */
+  .srvgrid { grid-template-columns: 1fr; }
+  .srv-item { border-right: none !important; border-bottom: 1px solid var(--border) !important; }
+  .srv-item:last-child { border-bottom: none !important; }
 
-  .btn{border:1px solid var(--line-strong);background:#fff;color:var(--ink);font:inherit;
-    font-size:13.5px;font-weight:500;padding:8px 15px;border-radius:10px;cursor:pointer}
-  .btn:hover{background:#f7f7f6}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-  .btn.primary:hover{background:#1a5e5a}
-  .btn.danger{border-color:#e7c6c2;color:var(--stop)}
-  .btn.danger:hover{background:#fbeceb}
-  .btn[disabled]{opacity:.55;cursor:not-allowed}
+  /* Config form */
+  .cfgrow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .cfgrow .lab { padding-top: 0; }
+  .cfgrow.toggle .ctrl { padding-top: 0; }
+  .advrow { grid-template-columns: 1fr 1fr 36px; }
 
-  .row{display:flex;align-items:center;gap:14px;padding:15px 20px;border-top:1px solid var(--line)}
-  .row:first-child{border-top:0}
-  .row .name{font-weight:560}
-  .row .meta{color:var(--muted);font-size:13.5px;margin-top:1px}
-  .row .right{margin-left:auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
-  .state{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:500}
-  .state .dot{width:8px;height:8px;border-radius:50%}
-  .dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)}
-  .dot.stop{background:var(--stop)} .dot.idle{background:var(--faint)}
-  .state.s-ok{color:var(--ok)} .state.s-warn{color:var(--warn)} .state.s-stop{color:var(--stop)}
-  .sub{color:var(--faint);font-size:12.5px;font-variant-numeric:tabular-nums}
-  .actions{display:flex;gap:16px;margin-top:7px}
-  .act{background:none;border:0;font:inherit;font-size:13px;font-weight:500;cursor:pointer;color:var(--accent);padding:0}
-  .act:hover{text-decoration:underline}
-  .act.danger{color:var(--stop)}
+  /* Panel rows */
+  .row { padding: 12px 14px; }
+  .row .right { max-width: 130px; }
 
-  .addform{display:none;gap:10px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);background:#fafafa}
-  .addform.open{display:flex}
-  .addform input{flex:1;min-width:0;font:inherit;font-size:15px;padding:9px 12px;border:1px solid var(--line-strong);border-radius:10px;background:#fff}
-  .addform input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
-  .formhint{padding:0 20px 14px;color:var(--faint);font-size:12.5px}
-  .formhint.bad{color:var(--stop)}
+  /* Controls */
+  .controls { padding: 12px 14px; gap: 8px; }
+  .controls .grp { flex-wrap: wrap; margin-left: 0; width: 100%; }
 
-  .empty{padding:28px 20px;text-align:center;color:var(--faint);font-size:14px}
-  .err{padding:28px 20px;text-align:center;color:var(--stop);font-size:14px}
+  /* Sechead stacks */
+  .sechead { flex-direction: column; align-items: stretch; gap: 10px; }
 
-  .srvgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line)}
-  .srv-item{background:#fff;padding:14px 18px;min-width:0}
-  .srv-item .k{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
-  .srv-item .v{font-size:15px;font-weight:540;margin-top:4px;word-break:break-word}
-  .srv-item .v.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:500}
-  .srv-item .v .tag{display:inline-block;background:var(--accent-soft);color:var(--accent);
-    font-size:12px;font-weight:600;border-radius:6px;padding:1px 7px;margin:1px 4px 1px 0}
-  .allcfg{border-top:1px solid var(--line)}
-  .allcfg summary{padding:13px 18px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--accent);list-style:none}
-  .allcfg summary::-webkit-details-marker{display:none}
-  .allcfg pre{margin:0;padding:2px 18px 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-    font-size:12.5px;line-height:1.7;color:#3a3f45;white-space:pre-wrap;word-break:break-word}
-  /* Configuration edit form */
-  .cfgform{padding:6px 0}
-  .cfgrow{display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start;padding:13px 20px;border-top:1px solid var(--line)}
-  .cfgrow:first-child{border-top:0}
-  .cfgrow .lab{font-size:13.5px;font-weight:560}
-  .cfgrow .lab small{display:block;color:var(--faint);font-weight:400;font-size:12px;margin-top:3px;line-height:1.4}
-  .cfgrow input[type=text],.cfgrow input[type=number],.cfgrow select{width:100%;font:inherit;font-size:14px;
-    padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;background:#fff;color:var(--ink)}
-  .cfgrow input:focus,.cfgrow select:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
-  .cfgrow .bad{border-color:var(--stop)!important}
-  .cfgrow.toggle .ctrl{display:flex;align-items:center;gap:9px}
-  .cfgrow .errmsg{color:var(--stop);font-size:12px;margin-top:5px;display:none}
-  .cfgsub{padding:16px 20px 6px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);border-top:1px solid var(--line)}
-  .advrow{display:grid;grid-template-columns:230px 1fr auto;gap:10px;padding:7px 20px;align-items:center}
-  .advrow input{font:inherit;font-size:13.5px;padding:7px 10px;border:1px solid var(--line-strong);border-radius:8px;background:#fff}
-  .advrow .del{border:0;background:none;color:var(--stop);cursor:pointer;font-size:18px;line-height:1;padding:0 6px}
-  .cfgbar{display:flex;gap:10px;justify-content:flex-end;padding:16px 20px;border-top:1px solid var(--line);background:#fafafa}
-  .cfgbar .addadv{margin-right:auto}
-  .logbox{margin:0;padding:16px 20px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-    font-size:12.5px;line-height:1.7;color:#3a3f45;white-space:pre-wrap;word-break:break-word;
-    max-height:360px;overflow:auto}
-  .logbox .lg-err{color:var(--stop)} .logbox .lg-ok{color:var(--ok)}
-  .toast{position:fixed;right:22px;bottom:22px;background:#1b2422;color:#fff;padding:12px 18px;
-    border-radius:11px;font-size:14px;box-shadow:0 8px 28px rgba(0,0,0,.22);opacity:0;
-    transform:translateY(8px);transition:.2s;pointer-events:none}
-  .toast.show{opacity:1;transform:none}
+  /* Page header */
+  .page-header h1 { font-size: 20px; }
 
-  /* ── Create Account Modal ── */
-  .ca-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
-  .ca-modal-overlay.open{display:flex}
-  .ca-modal{background:#fff;border-radius:18px;width:100%;max-width:700px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.22)}
-  .ca-modal-head{padding:22px 26px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
-  .ca-modal-head h3{font-size:18px;font-weight:600;letter-spacing:-.01em}
-  .ca-modal-head .ca-close{border:0;background:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;padding:2px 6px;border-radius:8px}
-  .ca-modal-head .ca-close:hover{background:var(--bg);color:var(--ink)}
-  .ca-modal-body{padding:22px 26px;overflow-y:auto;flex:1}
-  .ca-modal-foot{padding:16px 26px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:#fafafa}
-  .ca-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;font-size:12.5px;font-weight:600}
-  .ca-badge.ovpn{background:#fdf2e6;color:#c26a10}
-  .ca-badge.wg{background:#e8f0fd;color:#2855b8}
-  .ca-section{margin-bottom:20px}
-  .ca-section label{display:block;font-size:13px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
-  .ca-section input[type=text]{width:100%;font:inherit;font-size:15px;padding:10px 13px;border:1px solid var(--line-strong);border-radius:10px;background:#fff}
-  .ca-section input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
-  .ca-config-box{background:#1b2422;color:#c8d8d0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.7;padding:16px;border-radius:11px;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow:auto}
-  .ca-qr-wrap{display:flex;justify-content:center;margin-top:16px}
-  .ca-qr-wrap img,.ca-qr-wrap svg{width:180px;height:180px;border-radius:12px;background:#fff;padding:8px;border:1px solid var(--line)}
-  .ca-actions-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
-  .ca-hint{font-size:13px;color:var(--muted);margin-top:8px}
-  .ca-err{font-size:13.5px;color:var(--stop);margin-top:10px;padding:10px 14px;background:#fbeceb;border-radius:9px;display:none}
-  .ca-err.show{display:block}
-  .ca-success-banner{background:#edf7f0;border:1px solid #b2dfca;border-radius:11px;padding:14px 18px;display:flex;align-items:center;gap:10px;margin-bottom:18px}
-  .ca-success-banner .icon{font-size:22px}
-  .ca-success-banner .msg{font-size:14.5px;font-weight:500;color:#1f6b3a}
+  /* Search bar */
+  .search-bar { gap: 6px; }
+  .search-bar input[type=text] { width: 100%; }
+  .search-bar select { width: 100%; }
 
-  /* ── Create Account Page ── */
-  .ca-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-  @media(max-width:800px){.ca-grid{grid-template-columns:1fr}}
-  .ca-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
-  .ca-card-head{padding:20px 22px 16px;border-bottom:1px solid var(--line)}
-  .ca-card-head h3{font-size:15.5px;font-weight:600}
-  .ca-card-head p{font-size:13.5px;color:var(--muted);margin-top:4px}
-  .ca-card-body{padding:20px 22px}
-  .ca-card-body input[type=text]{width:100%;font:inherit;font-size:14.5px;padding:9px 12px;border:1px solid var(--line-strong);border-radius:10px;background:#fff;margin-bottom:10px}
-  .ca-card-body input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
-  .ca-card-hint{font-size:12.5px;color:var(--faint);margin-bottom:14px}
-  .ca-card-err{font-size:13px;color:var(--stop);margin-top:8px;display:none}
-  .ca-card-err.show{display:block}
-  .ca-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .ca-recent{margin-top:28px}
-  .ca-recent h2{font-size:13px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
-  .ca-tabs{display:flex;gap:0;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;margin-bottom:16px;width:fit-content}
-  .ca-tab{padding:7px 18px;font:inherit;font-size:13.5px;font-weight:500;border:0;background:#fff;color:var(--muted);cursor:pointer}
-  .ca-tab.active{background:var(--accent);color:#fff}
+  /* ca-tabs */
+  .ca-tabs { width: 100%; }
+  .ca-tab { flex: 1; text-align: center; }
 
+  /* Modal */
+  .ca-modal { border-radius: var(--r-lg) var(--r-lg) 0 0; max-height: 95vh; align-self: flex-end; }
+  .ca-modal-overlay { align-items: flex-end; padding: 0; }
+
+  /* Add form */
+  .addform { flex-direction: column; align-items: stretch; }
+  .addform input { width: 100%; }
+  .addform .btn { width: 100%; justify-content: center; }
+
+  /* User form */
+  #user-form { flex-direction: column; align-items: stretch; }
+  #user-form input,
+  #user-form select { width: 100%; }
+  #user-form .btn { width: 100%; justify-content: center; }
+}
+
+/* ── Small mobile (≤ 420px) ── */
+@media (max-width: 420px) {
+  .stats { grid-template-columns: 1fr; }
+  .stat .v { font-size: 28px; }
+  .topbar-title span { display: none; }
+  .row .right { display: none; }
+  .row { flex-wrap: wrap; }
+  .ca-modal-head h3 { font-size: 15px; }
+}
 </style>
 </head>
 <body>
+
+<!-- Mobile sidebar overlay -->
+<div class="sb-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
 <div class="app">
-  <aside class="side">
-    <div class="brand">VPN <span>Manager</span></div>
-    <div class="backend-badge">
-      <span class="logo" id="backend-logo"></span>
-      <div><div class="bk-name" id="backend-name">—</div><div class="bk-sub">active VPN server</div></div>
+
+  <!-- ═══════════════════════════════════════
+       SIDEBAR
+  ═══════════════════════════════════════ -->
+  <aside class="side" id="sidebar">
+    <div class="sb-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 1L3 4.5v5.25C3 13.7 6.1 17.35 10 19c3.9-1.65 7-5.3 7-9.25V4.5L10 1z"/>
+          </svg>
+        </div>
+        <div class="brand-name">VPN <span>Manager</span></div>
+      </div>
+      <button class="sb-close" onclick="closeSidebar()" aria-label="Close menu">&#x2715;</button>
     </div>
-    <div class="svc-chip">
+
+    <div class="sb-backend">
+      <span id="backend-logo"></span>
+      <div>
+        <div class="bk-name" id="backend-name">—</div>
+        <div class="bk-sub">active VPN server</div>
+      </div>
+    </div>
+
+    <div class="sb-svc">
       <span id="svc-dot" class="dot idle"></span>
-      <div><div class="t" id="svc-title">Checking…</div><div class="s" id="svc-sub"></div></div>
+      <div>
+        <div class="svc-t" id="svc-title">Checking…</div>
+        <div class="svc-s" id="svc-sub"></div>
+      </div>
     </div>
-    <nav id="nav">
-      <a data-page="overview" onclick="showPage('overview')">Overview</a>
-      <a data-page="service" onclick="showPage('service')">Service</a>
-      <a data-page="server" onclick="showPage('server')">Configuration</a>
-      <a data-page="devices" onclick="showPage('devices')">Devices <span class="n" id="nav-clients">·</span></a>
-      <a data-page="create-account" onclick="showPage('create-account')" id="nav-create">Create Account</a>
-      <a data-page="connections" onclick="showPage('connections')">Connections <span class="n" id="nav-conns">·</span></a>
-      <a data-page="logs" onclick="showPage('logs')">Logs</a>
-      <a data-page="activity" id="nav-activity" onclick="showPage('activity')" style="display:none">Activity</a>
-      <a data-page="users" id="nav-users" onclick="showPage('users')" style="display:none">Users</a>
-      <a data-page="system" onclick="showPage('system')">System</a>
-      <a data-page="account" onclick="showPage('account')">My account</a>
+
+    <nav class="sb-nav" id="nav">
+      <div class="sb-section">Navigation</div>
+      <a data-page="overview" onclick="navTo('overview')">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        </span>
+        Overview
+      </a>
+      <a data-page="service" onclick="navTo('service')">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </span>
+        Service
+      </a>
+      <a data-page="server" onclick="navTo('server')">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="2" y="3" width="20" height="5" rx="1"/><rect x="2" y="10" width="20" height="5" rx="1"/>
+            <rect x="2" y="17" width="20" height="5" rx="1"/>
+            <circle cx="6" cy="5.5" r="1" fill="currentColor"/><circle cx="6" cy="12.5" r="1" fill="currentColor"/>
+            <circle cx="6" cy="19.5" r="1" fill="currentColor"/>
+          </svg>
+        </span>
+        Configuration
+      </a>
+      <a data-page="devices" onclick="navTo('devices')">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="5" y="2" width="14" height="20" rx="2"/>
+            <circle cx="12" cy="17" r="1" fill="currentColor"/>
+          </svg>
+        </span>
+        Devices
+        <span class="badge" id="nav-clients">·</span>
+      </a>
+      <a data-page="create-account" onclick="navTo('create-account')" id="nav-create">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/>
+            <line x1="22" y1="11" x2="16" y2="11"/>
+          </svg>
+        </span>
+        Create Account
+      </a>
+      <a data-page="connections" onclick="navTo('connections')">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </span>
+        Connections
+        <span class="badge" id="nav-conns">·</span>
+      </a>
+      <a data-page="logs" onclick="navTo('logs')">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>
+          </svg>
+        </span>
+        Logs
+      </a>
+      <a data-page="activity" id="nav-activity" onclick="navTo('activity')" style="display:none">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </span>
+        Activity
+      </a>
+      <a data-page="users" id="nav-users" onclick="navTo('users')" style="display:none">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </span>
+        Users
+      </a>
+      <div class="sb-section">Account</div>
+      <a data-page="system" onclick="navTo('system')">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.07 4.93a10 10 0 1 0 0 14.14"/>
+          </svg>
+        </span>
+        System
+      </a>
+      <a data-page="account" onclick="navTo('account')">
+        <span class="nav-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </span>
+        My Account
+      </a>
     </nav>
-    <div class="switch" id="backend-switch">
+
+    <div class="sb-switch" id="backend-switch">
       <button class="on" data-b="openvpn" onclick="setBackend('openvpn')">OpenVPN</button>
       <button data-b="wireguard" onclick="setBackend('wireguard')">WireGuard</button>
     </div>
-    <div class="foot">
-      <div class="me-chip" id="me-chip" style="display:none"><span class="me-u" id="me-user">—</span><span class="me-r" id="me-role"></span></div>
-      <form method="post" action="/logout"><button class="logout" type="submit">Sign out</button></form>
-      <div id="ver-badge" style="margin-top:10px;text-align:center;font-size:11px;color:#4a5a56;letter-spacing:.02em">—</div>
+
+    <div class="sb-foot">
+      <div class="me-chip" id="me-chip">
+        <div class="me-av" id="me-av">?</div>
+        <div>
+          <div class="me-u" id="me-user">—</div>
+          <div class="me-r" id="me-role"></div>
+        </div>
+      </div>
+      <form method="post" action="/logout">
+        <button class="sb-logout" type="submit">Sign out</button>
+      </form>
+      <div class="ver-badge" id="ver-badge">—</div>
     </div>
   </aside>
 
-  <main>
-   <div class="wrap">
-    <h1>VPN Panel</h1>
-    <p class="lead">Manage your VPN server: service status, who has access, who is connected and the logs. Everything you would do on the command line, from here.</p>
+  <!-- ═══════════════════════════════════════
+       MAIN AREA
+  ═══════════════════════════════════════ -->
+  <div class="main-wrap">
 
-    <section id="overview" class="page">
-      <div class="sechead"><div><h2>Overview</h2></div></div>
-      <div class="stats">
-        <div class="stat"><div class="k">Service</div><div class="v" id="st-svc">—</div></div>
-        <div class="stat"><div class="k">Active access</div><div class="v" id="st-active">—</div></div>
-        <div class="stat"><div class="k">Connected now</div><div class="v" id="st-conns">—</div></div>
-        <div class="stat"><div class="k">Expired / revoked</div><div class="v" id="st-other">—</div></div>
+    <!-- Top bar -->
+    <header class="topbar">
+      <button class="topbar-hamburger" id="hamburger" aria-label="Open menu" onclick="openSidebar()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <div class="topbar-title">VPN <span>Manager</span></div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-svc">
+        <span class="dot idle" id="topbar-dot"></span>
+        <span id="topbar-svc-label">Checking…</span>
       </div>
-    </section>
+    </header>
 
-    <section id="service" class="page">
-      <div class="sechead"><div><h2>Service</h2><p class="hint" id="svc-hint">Control the server. “Reload” re-reads the configuration without disconnecting users; “Restart” disconnects them briefly.</p></div></div>
-      <div class="panel"><div class="controls">
-        <span class="state" id="svc-state"><span class="dot idle"></span>—</span>
-        <div class="grp">
-          <button class="btn" onclick="svcAction('reload')">Reload</button>
-          <button class="btn" onclick="svcAction('restart')">Restart</button>
-          <button class="btn danger" id="btn-toggle" onclick="toggleService()">Stop</button>
+    <!-- Pages -->
+    <main>
+
+      <!-- ── Overview ── -->
+      <section id="overview" class="page">
+        <div class="page-header">
+          <h1>Overview</h1>
+          <p class="page-sub">Manage your VPN server — service, access, connections and logs. Everything you would do on the command line, from here.</p>
         </div>
-      </div></div>
-    </section>
-
-    <section id="server" class="page">
-      <div class="sechead">
-        <div><h2>Server configuration</h2><p class="hint" id="cfg-hint">Parameters the server is running with. You can edit them.</p></div>
-        <button class="btn" id="cfg-edit-btn" onclick="editServer()">Edit configuration</button>
-      </div>
-      <div class="panel"><div id="server-info"><div class="empty">Loading…</div></div></div>
-    </section>
-
-    <section id="devices" class="page">
-      <div class="sechead">
-        <div><h2>Devices with access</h2><p class="hint">Each device (laptop, phone, tablet…) has a certificate. Here you can see if its access is active, expired or revoked, and you can add, renew or revoke it.</p></div>
-        <button class="btn primary" id="add-btn" onclick="toggleForm(true)">Add device</button>
-      </div>
-      <div class="panel">
-        <div class="addform" id="add-form">
-          <input id="add-name" type="text" placeholder="Name, e.g. laptop-alice or phone-bob" maxlength="64" autocomplete="off" onkeydown="if(event.key==='Enter')createClient()">
-          <button class="btn primary" onclick="createClient()">Create access</button>
-          <button class="btn" onclick="toggleForm(false)">Cancel</button>
+        <div class="stats">
+          <div class="stat">
+            <div class="k">Service</div>
+            <div class="v" id="st-svc">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">Active access</div>
+            <div class="v" id="st-active">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">Connected now</div>
+            <div class="v" id="st-conns">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">Expired / Revoked</div>
+            <div class="v" id="st-other">—</div>
+          </div>
         </div>
-        <div class="formhint" id="add-hint" style="display:none"></div>
-        <div id="clients"><div class="empty">Loading…</div></div>
-      </div>
-    </section>
+      </section>
 
-    <section id="connections" class="page">
-      <div class="sechead"><div><h2>Active connections</h2><p class="hint">Users currently connected to the VPN.</p></div></div>
-      <div class="panel" id="conns"><div class="empty">Loading…</div></div>
-    </section>
-
-    <section id="logs" class="page">
-      <div class="sechead">
-        <div><h2>Server logs</h2><p class="hint" id="logs-hint">Last lines of the server log.</p></div>
-        <button class="btn" onclick="loadLogs()">Refresh</button>
-      </div>
-      <div class="panel"><pre class="logbox" id="logs-pre">Loading…</pre></div>
-    </section>
-
-    <section id="create-account" class="page">
-      <div class="sechead"><div><h2>Create Account</h2><p class="hint">Create a new VPN account (certificate) for a device or user. Choose the protocol, enter a name, then download or scan the configuration.</p></div></div>
-      <div class="ca-tabs">
-        <button class="ca-tab active" id="ca-tab-ovpn" onclick="caTabSwitch('openvpn')">OpenVPN</button>
-        <button class="ca-tab" id="ca-tab-wg" onclick="caTabSwitch('wireguard')">WireGuard</button>
-      </div>
-      <div class="ca-card" style="margin-bottom:16px">
-        <div class="ca-card-head">
-          <h3>New OpenVPN account</h3>
-          <p>Enter a short name — no spaces, e.g. <code>laptop-alice</code> or <code>phone-bob</code>.</p>
+      <!-- ── Service ── -->
+      <section id="service" class="page">
+        <div class="page-header">
+          <div class="sechead">
+            <div class="sechead-left">
+              <h2>Service</h2>
+              <p class="hint" id="svc-hint">Control the server. "Reload" re-reads the configuration without disconnecting users; "Restart" disconnects them briefly.</p>
+            </div>
+          </div>
         </div>
-        <div class="ca-card-body" id="ca-tab-ovpn-body">
-          <input type="text" id="ovpn-new-name" placeholder="Account name (e.g. laptop-alice)" maxlength="64" autocomplete="off"
-            onkeydown="if(event.key==='Enter')caCreate('openvpn')">
-          <div class="ca-card-err" id="ovpn-err"></div>
-          <button class="btn primary" id="ovpn-create-btn" onclick="caCreate('openvpn')">Create OpenVPN Account</button>
+        <div class="panel">
+          <div class="controls">
+            <span class="state" id="svc-state"><span class="dot idle"></span> —</span>
+            <div class="grp">
+              <button class="btn" onclick="svcAction('reload')">Reload</button>
+              <button class="btn" onclick="svcAction('restart')">Restart</button>
+              <button class="btn danger" id="btn-toggle" onclick="toggleService()">Stop</button>
+            </div>
+          </div>
         </div>
-        <div class="ca-card-body" id="ca-tab-wg-body" style="display:none">
-          <input type="text" id="wg-new-name" placeholder="Account name (e.g. phone-bob)" maxlength="64" autocomplete="off"
-            onkeydown="if(event.key==='Enter')caCreate('wireguard')">
-          <div class="ca-card-err" id="wg-err"></div>
-          <button class="btn primary" id="wg-create-btn" onclick="caCreate('wireguard')">Create WireGuard Account</button>
+      </section>
+
+      <!-- ── Server configuration ── -->
+      <section id="server" class="page">
+        <div class="page-header">
+          <div class="sechead">
+            <div class="sechead-left">
+              <h2>Server configuration</h2>
+              <p class="hint" id="cfg-hint">Parameters the server is running with. You can edit them.</p>
+            </div>
+            <button class="btn" id="cfg-edit-btn" onclick="editServer()">Edit configuration</button>
+          </div>
         </div>
-      </div>
-      <div class="ca-recent">
-        <h2>Existing accounts</h2>
-        <div class="panel" id="ca-recent-list"><div class="empty">Loading…</div></div>
-      </div>
-    </section>
-
-    <section id="users" class="page">
-      <div class="sechead">
-        <div><h2>Panel users</h2><p class="hint">Who can access the panel and with what permissions. <b>Administrator</b>: full access. <b>Operator</b>: manages devices and the service. <b>Read only</b>: view only.</p></div>
-        <button class="btn primary" id="user-add-btn" onclick="toggleUserForm(true)">Add user</button>
-      </div>
-      <div class="panel">
-        <div class="addform" id="user-form">
-          <input id="u-name" type="text" placeholder="Username (e.g. alice)" maxlength="32" autocomplete="off">
-          <input id="u-pass" type="password" placeholder="Password (min. 8)" maxlength="256" autocomplete="new-password">
-          <select id="u-role" style="font:inherit;font-size:15px;padding:9px 12px;border:1px solid var(--line-strong);border-radius:10px;background:#fff"></select>
-          <button class="btn primary" onclick="createUser()">Create</button>
-          <button class="btn" onclick="toggleUserForm(false)">Cancel</button>
+        <div class="panel">
+          <div id="server-info"><div class="empty">Loading…</div></div>
         </div>
-        <div class="formhint" id="u-hint" style="display:none"></div>
-        <div id="users-list"><div class="empty">Loading…</div></div>
-      </div>
-    </section>
+      </section>
 
-    <section id="activity" class="page">
-      <div class="sechead">
-        <div><h2>Activity</h2><p class="hint">Log of panel actions: logins, device additions and removals, configuration and user changes, installations…</p></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input id="audit-q" type="text" placeholder="Search (user, action…)" oninput="auditFilter()"
-            style="font:inherit;font-size:14px;padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;width:220px">
-          <select id="audit-level" onchange="loadAudit()" style="font:inherit;font-size:14px;padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;background:#fff">
-            <option value="">All</option><option value="INFO">Info</option><option value="WARNING">Warnings</option>
-          </select>
-          <button class="btn" onclick="loadAudit()">Refresh</button>
+      <!-- ── Devices ── -->
+      <section id="devices" class="page">
+        <div class="page-header">
+          <div class="sechead">
+            <div class="sechead-left">
+              <h2>Devices with access</h2>
+              <p class="hint">Each device has a certificate. See if its access is active, expired or revoked, and add, renew or revoke it.</p>
+            </div>
+            <button class="btn primary" id="add-btn" onclick="toggleForm(true)">+ Add device</button>
+          </div>
         </div>
-      </div>
-      <div class="panel" id="audit"><div class="empty">Loading…</div></div>
-    </section>
+        <div class="panel">
+          <div class="addform" id="add-form">
+            <input id="add-name" type="text" placeholder="Name, e.g. laptop-alice or phone-bob" maxlength="64" autocomplete="off" onkeydown="if(event.key==='Enter')createClient()">
+            <button class="btn primary" onclick="createClient()">Create access</button>
+            <button class="btn" onclick="toggleForm(false)">Cancel</button>
+          </div>
+          <div class="formhint" id="add-hint" style="display:none"></div>
+          <div id="clients"><div class="empty">Loading…</div></div>
+        </div>
+      </section>
 
-    <section id="system" class="page">
-      <div class="sechead"><div><h2>System</h2><p class="hint">Detected operating system and installed VPN services. The panel can install any that are missing.</p></div></div>
-      <div class="stats" style="margin-bottom:16px">
-        <div class="stat"><div class="k">Distribution</div><div class="v" id="sys-distro" style="font-size:18px">—</div></div>
-        <div class="stat"><div class="k">Package manager</div><div class="v" id="sys-pm" style="font-size:18px">—</div></div>
-        <div class="stat"><div class="k">Permissions</div><div class="v" id="sys-root" style="font-size:18px">—</div></div>
-      </div>
-      <div class="panel" id="sys-services"><div class="empty">Loading…</div></div>
-      <div id="sys-preflight"></div>
-    </section>
+      <!-- ── Connections ── -->
+      <section id="connections" class="page">
+        <div class="page-header">
+          <div class="sechead">
+            <div class="sechead-left">
+              <h2>Active connections</h2>
+              <p class="hint">Users currently connected to the VPN.</p>
+            </div>
+          </div>
+        </div>
+        <div class="panel" id="conns"><div class="empty">Loading…</div></div>
+      </section>
 
-    <section id="account" class="page">
-      <div class="sechead"><div><h2>My account</h2><p class="hint">Your user account and two-factor authentication (2FA), which adds a one-time code to the login process.</p></div></div>
-      <div class="panel" id="account-panel"><div class="empty">Loading…</div></div>
-    </section>
-   </div>
-  </main>
-</div>
+      <!-- ── Logs ── -->
+      <section id="logs" class="page">
+        <div class="page-header">
+          <div class="sechead">
+            <div class="sechead-left">
+              <h2>Server logs</h2>
+              <p class="hint" id="logs-hint">Last lines of the server log.</p>
+            </div>
+            <button class="btn" onclick="loadLogs()">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+        <div class="panel"><pre class="logbox" id="logs-pre">Loading…</pre></div>
+      </section>
+
+      <!-- ── Create Account ── -->
+      <section id="create-account" class="page">
+        <div class="page-header">
+          <h1>Create Account</h1>
+          <p class="page-sub">Create a new VPN account for a device or user. Choose the protocol, enter a name, then download or scan the configuration.</p>
+        </div>
+        <div class="ca-tabs">
+          <button class="ca-tab active" id="ca-tab-ovpn" onclick="caTabSwitch('openvpn')">OpenVPN</button>
+          <button class="ca-tab" id="ca-tab-wg" onclick="caTabSwitch('wireguard')">WireGuard</button>
+        </div>
+        <div class="ca-card" style="margin-bottom:16px">
+          <div class="ca-card-head">
+            <h3>New OpenVPN account</h3>
+            <p>Enter a short name — no spaces, e.g. <code>laptop-alice</code> or <code>phone-bob</code>.</p>
+          </div>
+          <div class="ca-card-body" id="ca-tab-ovpn-body">
+            <input type="text" id="ovpn-new-name" placeholder="Account name (e.g. laptop-alice)" maxlength="64" autocomplete="off"
+              onkeydown="if(event.key==='Enter')caCreate('openvpn')">
+            <div class="ca-card-err" id="ovpn-err"></div>
+            <button class="btn primary" id="ovpn-create-btn" onclick="caCreate('openvpn')">Create OpenVPN Account</button>
+          </div>
+          <div class="ca-card-body" id="ca-tab-wg-body" style="display:none">
+            <input type="text" id="wg-new-name" placeholder="Account name (e.g. phone-bob)" maxlength="64" autocomplete="off"
+              onkeydown="if(event.key==='Enter')caCreate('wireguard')">
+            <div class="ca-card-err" id="wg-err"></div>
+            <button class="btn primary" id="wg-create-btn" onclick="caCreate('wireguard')">Create WireGuard Account</button>
+          </div>
+        </div>
+        <div class="ca-recent">
+          <h2>Existing accounts</h2>
+          <div class="panel" id="ca-recent-list"><div class="empty">Loading…</div></div>
+        </div>
+      </section>
+
+      <!-- ── Panel users ── -->
+      <section id="users" class="page">
+        <div class="page-header">
+          <div class="sechead">
+            <div class="sechead-left">
+              <h2>Panel users</h2>
+              <p class="hint"><strong>Administrator</strong>: full access. <strong>Operator</strong>: manages devices and service. <strong>Read only</strong>: view only.</p>
+            </div>
+            <button class="btn primary" id="user-add-btn" onclick="toggleUserForm(true)">+ Add user</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="addform" id="user-form">
+            <input id="u-name" type="text" placeholder="Username (e.g. alice)" maxlength="32" autocomplete="off">
+            <input id="u-pass" type="password" placeholder="Password (min. 8)" maxlength="256" autocomplete="new-password">
+            <select id="u-role" class="inline-select"></select>
+            <button class="btn primary" onclick="createUser()">Create</button>
+            <button class="btn" onclick="toggleUserForm(false)">Cancel</button>
+          </div>
+          <div class="formhint" id="u-hint" style="display:none"></div>
+          <div id="users-list"><div class="empty">Loading…</div></div>
+        </div>
+      </section>
+
+      <!-- ── Activity ── -->
+      <section id="activity" class="page">
+        <div class="page-header">
+          <div class="sechead">
+            <div class="sechead-left">
+              <h2>Activity</h2>
+              <p class="hint">Log of panel actions: logins, device changes, configuration and user changes…</p>
+            </div>
+            <div class="search-bar">
+              <input id="audit-q" type="text" placeholder="Search (user, action…)" oninput="auditFilter()">
+              <select id="audit-level" onchange="loadAudit()">
+                <option value="">All</option>
+                <option value="INFO">Info</option>
+                <option value="WARNING">Warnings</option>
+              </select>
+              <button class="btn" onclick="loadAudit()">Refresh</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel" id="audit"><div class="empty">Loading…</div></div>
+      </section>
+
+      <!-- ── System ── -->
+      <section id="system" class="page">
+        <div class="page-header">
+          <div class="sechead">
+            <div class="sechead-left">
+              <h2>System</h2>
+              <p class="hint">Detected operating system and installed VPN services. The panel can install any that are missing.</p>
+            </div>
+          </div>
+        </div>
+        <div class="sys-stats">
+          <div class="stat">
+            <div class="k">Distribution</div>
+            <div class="v" id="sys-distro" style="font-size:20px">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">Package manager</div>
+            <div class="v" id="sys-pm" style="font-size:20px">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">Permissions</div>
+            <div class="v" id="sys-root" style="font-size:20px">—</div>
+          </div>
+        </div>
+        <div class="panel" id="sys-services"><div class="empty">Loading…</div></div>
+        <div id="sys-preflight"></div>
+      </section>
+
+      <!-- ── My account ── -->
+      <section id="account" class="page">
+        <div class="page-header">
+          <div class="sechead">
+            <div class="sechead-left">
+              <h2>My account</h2>
+              <p class="hint">Your user account and two-factor authentication (2FA).</p>
+            </div>
+          </div>
+        </div>
+        <div class="panel" id="account-panel"><div class="empty">Loading…</div></div>
+      </section>
+
+    </main>
+  </div><!-- .main-wrap -->
+</div><!-- .app -->
+
 <div class="toast" id="toast"></div>
 
 <script>
-const esc = s => (s??'').toString().replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const fmtBytes = b => { if(!b) return '0 B'; const u=['B','KB','MB','GB','TB']; let i=0; while(b>=1024&&i<u.length-1){b/=1024;i++;} return b.toFixed(i?1:0)+' '+u[i]; };
+/* ══════════════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════════════ */
+const esc = s => (s??'').toString().replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmtBytes = b => {
+  if(!b) return '0 B';
+  const u=['B','KB','MB','GB','TB']; let i=0;
+  while(b>=1024&&i<u.length-1){b/=1024;i++;}
+  return b.toFixed(i?1:0)+' '+u[i];
+};
 const fmtDate = s => s ? new Date(s).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '—';
-const since = s => { if(!s) return '—'; const m=Math.max(0,Math.round((Date.now()-new Date(s))/60000)); if(m<60) return m+' min ago'; const h=Math.floor(m/60); if(h<24) return h+'h '+(m%60)+'min ago'; return Math.floor(h/24)+' days ago'; };
-const CLIENT_STATE = { valid:{cls:'s-ok',dot:'ok',label:'Access active'}, revoked:{cls:'s-stop',dot:'stop',label:'Access revoked'}, expired:{cls:'s-warn',dot:'warn',label:'Expired'} };
+const since = s => {
+  if(!s) return '—';
+  const m=Math.max(0,Math.round((Date.now()-new Date(s))/60000));
+  if(m<60) return m+' min ago';
+  const h=Math.floor(m/60);
+  if(h<24) return h+'h '+(m%60)+'min ago';
+  return Math.floor(h/24)+' days ago';
+};
+const CLIENT_STATE = {
+  valid:   {cls:'s-ok',  dot:'ok',   label:'Access active'},
+  revoked: {cls:'s-stop',dot:'stop', label:'Access revoked'},
+  expired: {cls:'s-warn',dot:'warn', label:'Expired'}
+};
 let _serviceActive = true;
 
-// The logo for each protocol is served from /assets/<backend>.svg (place
-// official logos there; neutral placeholders are included). Brand colour tints the rest.
+/* ══════════════════════════════════════════════
+   MOBILE SIDEBAR TOGGLE
+══════════════════════════════════════════════ */
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sb-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sb-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ══════════════════════════════════════════════
+   BACKEND
+══════════════════════════════════════════════ */
 const BACKENDS = {
-  openvpn:   { name:'OpenVPN',   accent:'#e07d22', soft:'#fdf2e6' },
+  openvpn:   { name:'OpenVPN',   accent:'#e07d22', soft:'#fef3e2' },
   wireguard: { name:'WireGuard', accent:'#88171a', soft:'#fbecec' },
 };
 let _backend = 'openvpn';
+
 function applyBackend(name){
   const b = BACKENDS[name] || BACKENDS.openvpn;
   _backend = name;
   document.documentElement.style.setProperty('--accent', b.accent);
+  document.documentElement.style.setProperty('--accent-2', name==='openvpn'?'#c96b14':'#6b1114');
   document.documentElement.style.setProperty('--accent-soft', b.soft);
-  document.getElementById('backend-logo').innerHTML = `<img class="logo-img" src="/assets/${name}.svg" alt="${esc(b.name)}">`;
+  document.documentElement.style.setProperty('--accent-text', name==='openvpn'?'#92400e':'#7f1d1d');
+  document.getElementById('backend-logo').innerHTML =
+    `<img class="logo-img" src="/assets/${name}.svg" alt="${esc(b.name)}">`;
   document.getElementById('backend-name').textContent = b.name;
   document.title = 'VPN Manager — ' + b.name;
   const sh = document.getElementById('svc-hint');
   if(sh) sh.textContent = `Control the ${b.name} server. "Reload" re-reads the configuration without disconnecting users; "Restart" disconnects them briefly.`;
   const ch = document.getElementById('cfg-hint');
-  if(ch) ch.textContent = `Parameters the ${b.name} server is running with.` + (name==='openvpn' ? ' You can edit them.' : '');
+  if(ch) ch.textContent = `Parameters the ${b.name} server is running with.`+(name==='openvpn'?' You can edit them.':'');
   const lh = document.getElementById('logs-hint');
   if(lh) lh.textContent = `Last lines of the ${b.name} log.`;
 }
 
-function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+/* ══════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════ */
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(()=>t.classList.remove('show'), 2800);
+}
 
+/* ══════════════════════════════════════════════
+   DATA LOAD
+══════════════════════════════════════════════ */
 async function load(){
   try{
     const [st, cl, cn, sv] = await Promise.all([
@@ -438,102 +1968,140 @@ async function load(){
     renderConns(cn);
     renderStats(st, cl, cn);
   }catch(e){
-    document.getElementById('svc-title').textContent='No connection to panel';
-    document.getElementById('svc-dot').className='dot warn';
+    document.getElementById('svc-title').textContent = 'No connection to panel';
+    document.getElementById('svc-dot').className = 'dot warn';
   }
 }
 
+/* ══════════════════════════════════════════════
+   RENDER SERVICE
+══════════════════════════════════════════════ */
 function renderService(st){
   if(st.backend) applyBackend(st.backend);
   _serviceActive = !!st.active;
-  const dot=document.getElementById('svc-dot'), title=document.getElementById('svc-title'), sub=document.getElementById('svc-sub');
-  dot.className='dot '+(st.active?'ok':'stop');
-  title.textContent = st.active?'VPN running':'VPN stopped';
-  sub.textContent = st.detail==='sandbox' ? 'test mode' : (st.active?'':'no one can connect');
-  const s=document.getElementById('svc-state');
-  s.className='state '+(st.active?'s-ok':'s-stop');
-  s.innerHTML=`<span class="dot ${st.active?'ok':'stop'}"></span>${st.active?'Service running':'Service stopped'}`;
-  const tg=document.getElementById('btn-toggle');
-  tg.textContent = st.active?'Stop':'Start';
-  tg.classList.toggle('danger', st.active);
-  tg.classList.toggle('primary', !st.active);
-  const grp=document.querySelector('#service .grp'); if(grp) grp.style.display = can('service:control') ? '' : 'none';
+  const dot   = document.getElementById('svc-dot');
+  const title = document.getElementById('svc-title');
+  const sub   = document.getElementById('svc-sub');
+  const tdot  = document.getElementById('topbar-dot');
+  const tlbl  = document.getElementById('topbar-svc-label');
+
+  dot.className  = 'dot '+(st.active?'ok':'stop');
+  title.textContent = st.active ? 'VPN running' : 'VPN stopped';
+  sub.textContent   = st.detail==='sandbox' ? 'test mode' : (st.active?'':'no one can connect');
+  if(tdot)  tdot.className = 'dot '+(st.active?'ok':'stop');
+  if(tlbl)  tlbl.textContent = (st.active ? 'VPN running' : 'VPN stopped') + (st.detail==='sandbox'?' · sandbox':'');
+
+  const s = document.getElementById('svc-state');
+  s.className = 'state '+(st.active?'s-ok':'s-stop');
+  s.innerHTML = `<span class="dot ${st.active?'ok':'stop'}"></span>${st.active?'Service running':'Service stopped'}`;
+
+  const tg = document.getElementById('btn-toggle');
+  tg.textContent = st.active ? 'Stop' : 'Start';
+  tg.className = 'btn '+(st.active ? 'danger' : 'success');
+
+  const grp = document.querySelector('#service .grp');
+  if(grp) grp.style.display = can('service:control') ? '' : 'none';
 }
 
+/* ══════════════════════════════════════════════
+   RENDER SERVER
+══════════════════════════════════════════════ */
 function renderServer(sv){
   _serverInfo = sv;
-  if(_editingServer) return;  // don't overwrite the form while editing
-  const item=(k,v,mono)=> v ? `<div class="srv-item"><div class="k">${k}</div><div class="v${mono?' mono':''}">${v}</div></div>` : '';
-  const tags=arr=> (arr&&arr.length)? arr.map(x=>`<span class="tag">${esc(x)}</span>`).join('') : '';
+  if(_editingServer) return;
+  const item=(k,v,mono) => v ? `<div class="srv-item"><div class="k">${k}</div><div class="v${mono?' mono':''}">${v}</div></div>` : '';
+  const tags = arr => (arr&&arr.length) ? arr.map(x=>`<span class="tag">${esc(x)}</span>`).join('') : '';
   const ciphers = sv.cipher ? sv.cipher.split(':').map(c=>`<span class="tag">${esc(c)}</span>`).join('') : '';
   const cells = [
-    item('Public endpoint', sv.public_endpoint?esc(sv.public_endpoint):'', true),
-    item('Port', sv.port?esc(sv.port):'', true),
-    item('Protocol', sv.proto?esc(sv.proto).toUpperCase():''),
-    item('Device', sv.device?esc(sv.device):'', true),
-    item('IP range (VPN)', sv.subnet?esc(sv.subnet):'', true),
+    item('Public endpoint', sv.public_endpoint ? esc(sv.public_endpoint) : '', true),
+    item('Port',  sv.port  ? esc(sv.port) : '', true),
+    item('Protocol', sv.proto ? esc(sv.proto).toUpperCase() : ''),
+    item('Device', sv.device ? esc(sv.device) : '', true),
+    item('IP range (VPN)', sv.subnet ? esc(sv.subnet) : '', true),
     item('Data ciphers', ciphers),
-    item('Authentication (HMAC)', sv.auth?esc(sv.auth):''),
-    item('Minimum TLS', sv.tls_version?esc(sv.tls_version):''),
-    item('Max. devices', sv.max_clients?esc(sv.max_clients):''),
+    item('Authentication (HMAC)', sv.auth ? esc(sv.auth) : ''),
+    item('Minimum TLS', sv.tls_version ? esc(sv.tls_version) : ''),
+    item('Max. devices', sv.max_clients ? esc(sv.max_clients) : ''),
     item('Client DNS', tags(sv.dns_servers)),
     item('Pushed routes', tags(sv.routes)),
-    item('Revocation list (CRL)', sv.crl_enabled?'<span style="color:var(--ok)">Enabled</span>':'<span style="color:var(--warn)">Disabled</span>'),
+    item('Revocation list (CRL)', sv.crl_enabled
+      ? '<span style="color:var(--ok)">Enabled</span>'
+      : '<span style="color:var(--warn)">Disabled</span>'),
   ].filter(Boolean);
-  // Pad the last row (3 columns) with empty cells to avoid gaps.
   while(cells.length % 3 !== 0) cells.push('<div class="srv-item"></div>');
   const grid = cells.join('');
   const all = (sv.directives&&sv.directives.length)
     ? `<details class="allcfg"><summary>View full configuration (${sv.directives.length} directives)</summary>
        <pre>${sv.directives.map(d=>esc(d.key+(d.value?' '+d.value:''))).join('\n')}</pre></details>` : '';
   document.getElementById('server-info').innerHTML =
-    (grid? `<div class="srvgrid">${grid}</div>`:'<div class="empty">Server configuration not found.</div>') + all;
+    (grid ? `<div class="srvgrid">${grid}</div>` : '<div class="empty">Server configuration not found.</div>') + all;
 }
 
-let _serverInfo = null;
-let _cfgSchema = null;
+let _serverInfo  = null;
+let _cfgSchema   = null;
 let _editingServer = false;
 let BACKEND = 'openvpn';
 const api = p => '/api/' + BACKEND + p;
 
+/* ══════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════ */
 function showPage(id){
   document.querySelectorAll('main section.page').forEach(s => s.classList.toggle('active', s.id===id));
   document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('active', a.dataset.page===id));
-  document.querySelector('main').scrollTop = 0;
   window.scrollTo(0,0);
-  if(id==='users') loadUsers();
-  if(id==='system') loadSystem();
+  if(id==='users')    loadUsers();
+  if(id==='system')   loadSystem();
   if(id==='activity') loadAudit();
-  if(id==='account') loadAccount();
+  if(id==='account')  loadAccount();
+}
+function navTo(id){
+  showPage(id);
+  closeSidebar();
 }
 
-// ── My account / 2FA ──
+/* ══════════════════════════════════════════════
+   MY ACCOUNT / 2FA
+══════════════════════════════════════════════ */
 function loadAccount(){
   const on = !!_me.totp_enabled;
   document.getElementById('account-panel').innerHTML = `
-    <div class="row"><div><div class="name">${esc(_me.user||'')}</div><div class="meta">${esc(_me.role_label||'')}</div></div></div>
-    <div class="row"><div>
+    <div class="row">
+      <div class="me-av" style="width:40px;height:40px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0">
+        ${esc((_me.user||'?')[0].toUpperCase())}
+      </div>
+      <div>
+        <div class="name">${esc(_me.user||'')}</div>
+        <div class="meta">${esc(_me.role_label||'')}</div>
+      </div>
+    </div>
+    <div class="row">
+      <div style="flex:1">
         <div class="name">Two-factor authentication (2FA)</div>
         <div class="meta">${on?'Enabled — you will be asked for a code when signing in.':'Disabled — adds a one-time code to the sign-in process.'}</div>
         <div id="twofa-area"></div>
       </div>
-      <div class="right"><span class="state ${on?'s-ok':'s-warn'}"><span class="dot ${on?'ok':'warn'}"></span>${on?'Enabled':'Disabled'}</span>
-        ${on?`<button class="act danger" onclick="disable2fa()">Disable</button>`:`<button class="act" onclick="setup2fa()">Enable</button>`}</div>
+      <div class="right">
+        <span class="pill ${on?'ok':'warn'}">${on?'Enabled':'Disabled'}</span>
+        ${on
+          ? `<button class="act danger" onclick="disable2fa()">Disable</button>`
+          : `<button class="act" onclick="setup2fa()">Enable</button>`}
+      </div>
     </div>`;
 }
 async function setup2fa(){
   try{
     const d = await fetch('/api/me/2fa/setup',{method:'POST'}).then(r=>r.json());
     document.getElementById('twofa-area').innerHTML = `
-      <div style="margin-top:12px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+      <div style="margin-top:14px;display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
         <div class="qrbox">${d.qr}</div>
         <div style="max-width:360px">
-          <p class="meta">1) Scan the QR with your app (Google Authenticator, Aegis…) or enter the key manually:</p>
-          <p class="mono" style="font-size:12px;word-break:break-all;color:var(--muted)">${esc(d.secret)}</p>
-          <p class="meta">2) Enter the 6-digit code shown by the app to confirm:</p>
-          <div style="display:flex;gap:8px;margin-top:6px">
+          <p class="meta" style="margin-bottom:6px">1) Scan the QR with your app (Google Authenticator, Aegis…) or enter the key manually:</p>
+          <p style="font-family:monospace;font-size:12px;word-break:break-all;color:var(--muted);background:var(--surface-2);padding:8px 10px;border-radius:var(--r-sm);margin-bottom:10px">${esc(d.secret)}</p>
+          <p class="meta" style="margin-bottom:8px">2) Enter the 6-digit code shown by the app to confirm:</p>
+          <div style="display:flex;gap:8px">
             <input id="twofa-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
-              style="font:inherit;padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;width:120px">
+              class="inline-input" style="width:120px">
             <button class="btn primary" onclick="enable2fa()">Enable</button>
           </div>
         </div>
@@ -560,47 +2128,65 @@ async function disable2fa(){
   }catch(e){ toast('Could not connect.'); }
 }
 
-let _auditTimer=null;
-function auditFilter(){ clearTimeout(_auditTimer); _auditTimer=setTimeout(loadAudit,300); }
+/* ══════════════════════════════════════════════
+   AUDIT / ACTIVITY
+══════════════════════════════════════════════ */
+let _auditTimer = null;
+function auditFilter(){ clearTimeout(_auditTimer); _auditTimer = setTimeout(loadAudit, 300); }
 async function loadAudit(){
   if(!can('audit:read')) return;
   try{
-    const q = encodeURIComponent((document.getElementById('audit-q')||{}).value||'');
+    const q   = encodeURIComponent((document.getElementById('audit-q')||{}).value||'');
     const lvl = (document.getElementById('audit-level')||{}).value||'';
-    const d = await fetch(`/api/audit?limit=300&q=${q}&level=${lvl}`).then(r=>r.json());
+    const d   = await fetch(`/api/audit?limit=300&q=${q}&level=${lvl}`).then(r=>r.json());
     const box = document.getElementById('audit');
-    if(!d.entries || !d.entries.length){ box.innerHTML='<div class="empty">No results for the current filter.</div>'; return; }
+    if(!d.entries||!d.entries.length){ box.innerHTML='<div class="empty">No results for the current filter.</div>'; return; }
     box.innerHTML = d.entries.map(e=>{
       const warn = e.level && e.level!=='INFO';
       const t = e.ts ? new Date(e.ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '';
-      return `<div class="row"><div><div class="name" style="font-weight:500">${esc(e.message)}</div></div>
-        <div class="right"><span class="sub">${esc(t)}</span>${warn?`<span class="state s-warn"><span class="dot warn"></span>${esc(e.level)}</span>`:''}</div></div>`;
+      return `<div class="row">
+        <div style="flex:1"><div class="name" style="font-weight:500">${esc(e.message)}</div></div>
+        <div class="right">
+          <span class="sub">${esc(t)}</span>
+          ${warn?`<span class="pill warn">${esc(e.level)}</span>`:''}
+        </div>
+      </div>`;
     }).join('');
   }catch(e){ document.getElementById('audit').innerHTML='<div class="err">Could not load activity.</div>'; }
 }
 
-// ── System / installation ──
+/* ══════════════════════════════════════════════
+   SYSTEM / INSTALLATION
+══════════════════════════════════════════════ */
 async function loadSystem(){
   try{
     const s = await fetch('/api/system').then(r=>r.json());
-    document.getElementById('sys-distro').textContent = (s.distro&&s.distro.name) || 'Linux';
-    document.getElementById('sys-pm').textContent = s.supported ? (s.package_manager||'—') : 'not supported';
-    document.getElementById('sys-root').textContent = s.is_root ? 'root' : 'no privileges';
+    document.getElementById('sys-distro').textContent = (s.distro&&s.distro.name)||'Linux';
+    document.getElementById('sys-pm').textContent     = s.supported ? (s.package_manager||'—') : 'not supported';
+    document.getElementById('sys-root').textContent   = s.is_root ? 'root' : 'no privileges';
     const svc = [
-      {k:'openvpn', label:'OpenVPN', sub:'+ easy-rsa'},
+      {k:'openvpn',   label:'OpenVPN',   sub:'+ easy-rsa'},
       {k:'wireguard', label:'WireGuard', sub:'wireguard-tools'},
     ];
     document.getElementById('sys-services').innerHTML = svc.map(x=>{
-      const inst = x.k==='openvpn' ? (s.installed.openvpn) : (s.installed.wireguard);
+      const inst = x.k==='openvpn' ? s.installed.openvpn : s.installed.wireguard;
       const canInstall = can('system:install') && !inst;
       let btn = '';
       if(canInstall){
-        const pkg = s.supported ? `<button class="btn" onclick="installService('${x.k}')">Install packages</button>` : '<span class="sub">distro not supported</span>';
+        const pkg = s.supported
+          ? `<button class="btn" onclick="installService('${x.k}')">Install packages</button>`
+          : '<span class="sub">distro not supported</span>';
         btn = `${pkg}<button class="btn primary" onclick="bootstrapService('${x.k}')">Full installation</button>`;
       }
-      return `<div class="row"><div><div class="name">${x.label}</div><div class="meta">${x.sub}</div></div>
-        <div class="right"><span class="state ${inst?'s-ok':'s-warn'}"><span class="dot ${inst?'ok':'warn'}"></span>${inst?'Installed':'Not installed'}</span></div>
-        ${btn?`<div style="margin-left:16px;display:flex;gap:8px">${btn}</div>`:''}</div>`;
+      return `<div class="row">
+        <div style="flex:1">
+          <div class="name">${x.label}</div>
+          <div class="meta">${x.sub}</div>
+        </div>
+        <div class="right">
+          <span class="pill ${inst?'ok':'warn'}">${inst?'Installed':'Not installed'}</span>
+        </div>
+        ${btn?`<div style="display:flex;gap:8px;align-items:center;margin-left:10px;flex-wrap:wrap">${btn}</div>`:''}</div>`;
     }).join('');
   }catch(e){ document.getElementById('sys-services').innerHTML='<div class="err">Could not read system info.</div>'; }
   loadPreflight();
@@ -610,10 +2196,11 @@ async function loadPreflight(){
   if(!can('users:manage')){ box.innerHTML=''; return; }
   try{
     const d = await fetch('/api/preflight').then(r=>r.json());
-    const dot = {ok:'ok', info:'idle', warn:'warn'};
-    const rows = (d.checks||[]).map(c=>`<div class="row"><div><div class="name" style="font-weight:500">${esc(c.message)}</div></div>
+    const dot = {ok:'ok',info:'idle',warn:'warn'};
+    const rows = (d.checks||[]).map(c=>`<div class="row">
+      <div style="flex:1"><div class="name" style="font-weight:500">${esc(c.message)}</div></div>
       <div class="right"><span class="dot ${dot[c.level]||'idle'}"></span></div></div>`).join('');
-    box.innerHTML = `<h2 style="margin:26px 0 10px">Security checks</h2>
+    box.innerHTML = `<h2 style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin:24px 0 10px">Security checks</h2>
       <div class="panel">${rows||'<div class="empty">—</div>'}</div>`;
   }catch(e){ box.innerHTML=''; }
 }
@@ -622,10 +2209,10 @@ async function bootstrapService(backend){
   try{ plan = await fetch('/api/system/bootstrap/'+backend+'/plan').then(r=>r.json()); }
   catch(e){ toast('Could not get the plan.'); return; }
   if(!plan.checksum_configured){
-    alert(`Full installation of ${backend.toUpperCase()} is not configured.\n\nSet the pinned source and its SHA-256 in .env:\n  VPNM_BOOTSTRAP_${backend.toUpperCase()}_URL (pointing to a specific commit of ${plan.repo})\n  VPNM_BOOTSTRAP_${backend.toUpperCase()}_SHA256\n\n(compute: curl -sL <url> | sha256sum)`);
+    alert(`Full installation of ${backend.toUpperCase()} is not configured.\n\nSet the pinned source and its SHA-256 in .env:\n  VPNM_BOOTSTRAP_${backend.toUpperCase()}_URL\n  VPNM_BOOTSTRAP_${backend.toUpperCase()}_SHA256`);
     return;
   }
-  if(!confirm(`FULL installation of ${backend.toUpperCase()} using the script from ${plan.repo}.\n\nWill be downloaded from:\n${plan.url}\nits SHA-256 will be verified and then executed (configures the entire server).\n\nContinue?`)) return;
+  if(!confirm(`FULL installation of ${backend.toUpperCase()}. Continue?`)) return;
   try{
     const r = await fetch('/api/system/bootstrap/'+backend,{method:'POST'});
     const d = await r.json().catch(()=>({}));
@@ -644,60 +2231,81 @@ async function installService(backend){
     const r = await fetch('/api/system/install/'+backend,{method:'POST'});
     const d = await r.json().catch(()=>({}));
     if(!r.ok){ toast(d.detail||'Could not install.'); return; }
-    toast(d.simulated ? 'Sandbox: installation simulated (see plan) ✓' : 'Installed ✓');
+    toast(d.simulated ? 'Sandbox: installation simulated ✓' : 'Installed ✓');
     loadSystem();
   }catch(e){ toast('Could not connect to the server.'); }
 }
 
-// ── Permissions / current user ──
+/* ══════════════════════════════════════════════
+   PERMISSIONS
+══════════════════════════════════════════════ */
 let _me = {permissions:[]};
 const can = p => Array.isArray(_me.permissions) && _me.permissions.includes(p);
 
 async function loadMe(){
-  try{ _me = await fetch('/api/me').then(r=>r.json()); }catch(e){ _me={permissions:[]}; }
-  const chip=document.getElementById('me-chip');
-  chip.style.display=''; document.getElementById('me-user').textContent=_me.user||'—';
-  document.getElementById('me-role').textContent=_me.role_label||'';
-  document.getElementById('nav-users').style.display = can('users:manage') ? '' : 'none';
-  document.getElementById('nav-activity').style.display = can('audit:read') ? '' : 'none';
+  try{ _me = await fetch('/api/me').then(r=>r.json()); }
+  catch(e){ _me={permissions:[]}; }
+  const chip = document.getElementById('me-chip');
+  chip.style.display = 'flex';
+  const av = document.getElementById('me-av');
+  if(av) av.textContent = (_me.user||'?')[0].toUpperCase();
+  document.getElementById('me-user').textContent = _me.user||'—';
+  document.getElementById('me-role').textContent = _me.role_label||'';
+  document.getElementById('nav-users').style.display    = can('users:manage') ? '' : 'none';
+  document.getElementById('nav-activity').style.display = can('audit:read')   ? '' : 'none';
   applyPerms();
-  // Show version badge
   try{
-    const v = await fetch('/api/version').then(r=>r.json());
+    const v  = await fetch('/api/version').then(r=>r.json());
     const vb = document.getElementById('ver-badge');
     if(vb) vb.textContent = 'v' + (v.version||'?');
   }catch(e){}
 }
 function applyPerms(){
-  const ab=document.getElementById('add-btn'); if(ab) ab.style.display = can('clients:write') ? '' : 'none';
-  const eb=document.getElementById('cfg-edit-btn'); if(eb) eb.style.display = can('server:write') ? '' : 'none';
+  const ab = document.getElementById('add-btn');    if(ab) ab.style.display = can('clients:write') ? '' : 'none';
+  const eb = document.getElementById('cfg-edit-btn'); if(eb) eb.style.display = can('server:write')  ? '' : 'none';
 }
 
-// ── User management ──
+/* ══════════════════════════════════════════════
+   USER MANAGEMENT
+══════════════════════════════════════════════ */
 async function loadUsers(){
   if(!can('users:manage')) return;
   try{
     const d = await fetch('/api/users').then(r=>r.json());
-    const sel=document.getElementById('u-role');
-    if(sel && !sel.options.length) sel.innerHTML=d.roles.map(r=>`<option value="${r.id}">${esc(r.label)}</option>`).join('');
+    const sel = document.getElementById('u-role');
+    if(sel && !sel.options.length) sel.innerHTML = d.roles.map(r=>`<option value="${r.id}">${esc(r.label)}</option>`).join('');
     document.getElementById('users-list').innerHTML = d.users.map(u=>{
-      const isMe = u.username===_me.user;
-      return `<div class="row"><div><div class="name">${esc(u.username)}${isMe?' <span class="sub">(you)</span>':''}</div>
-        <div class="meta">${esc(u.role_label)}</div></div>
-        <div class="right"><div class="actions">
-          <button class="act" onclick="changeRole('${esc(u.username)}','${u.role}')">Change role</button>
-          <button class="act" onclick="resetPass('${esc(u.username)}')">Change password</button>
-          ${isMe?'':`<button class="act danger" onclick="deleteUser('${esc(u.username)}')">Delete</button>`}
-        </div></div></div>`;
+      const isMe = u.username === _me.user;
+      return `<div class="row">
+        <div style="flex:1">
+          <div class="name">${esc(u.username)}${isMe?' <span class="sub">(you)</span>':''}</div>
+          <div class="meta">${esc(u.role_label)}</div>
+        </div>
+        <div class="right">
+          <div class="actions" style="flex-direction:row;margin-top:0">
+            <button class="act" onclick="changeRole('${esc(u.username)}','${u.role}')">Change role</button>
+            <button class="act" onclick="resetPass('${esc(u.username)}')">Change password</button>
+            ${isMe?'':`<button class="act danger" onclick="deleteUser('${esc(u.username)}')">Delete</button>`}
+          </div>
+        </div>
+      </div>`;
     }).join('');
   }catch(e){ document.getElementById('users-list').innerHTML='<div class="err">Could not load users.</div>'; }
 }
-function toggleUserForm(open){ document.getElementById('user-form').classList.toggle('open',open); document.getElementById('user-add-btn').style.visibility=open?'hidden':'visible'; uhint(''); }
-function uhint(m,bad){ const h=document.getElementById('u-hint'); h.textContent=m; h.className='formhint'+(bad?' bad':''); h.style.display=m?'block':'none'; }
+function toggleUserForm(open){
+  document.getElementById('user-form').classList.toggle('open',open);
+  document.getElementById('user-add-btn').style.visibility = open ? 'hidden' : 'visible';
+  uhint('');
+}
+function uhint(m,bad){
+  const h=document.getElementById('u-hint');
+  h.textContent=m; h.className='formhint'+(bad?' bad':'');
+  h.style.display=m?'block':'none';
+}
 async function createUser(){
-  const username=document.getElementById('u-name').value.trim();
-  const password=document.getElementById('u-pass').value;
-  const role=document.getElementById('u-role').value;
+  const username = document.getElementById('u-name').value.trim();
+  const password = document.getElementById('u-pass').value;
+  const role     = document.getElementById('u-role').value;
   if(!username||!password){ uhint('Please fill in username and password.',true); return; }
   try{
     const r=await fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,role})});
@@ -734,22 +2342,23 @@ async function deleteUser(username){
   }catch(e){ toast('Could not connect.'); }
 }
 
+/* ══════════════════════════════════════════════
+   BACKEND SWITCH
+══════════════════════════════════════════════ */
 function setBackend(name){
   if(name === BACKEND) return;
   BACKEND = name;
-  _editingServer = false; _serverInfo = null; _cfgSchema = null;
+  _editingServer=false; _serverInfo=null; _cfgSchema=null;
   document.querySelectorAll('#backend-switch button').forEach(b =>
-    b.classList.toggle('on', b.dataset.b === name));
+    b.classList.toggle('on', b.dataset.b===name));
   document.getElementById('server-info').innerHTML = '<div class="empty">Loading…</div>';
   document.getElementById('cfg-edit-btn').style.display = '';
   load(); loadLogs();
 }
 
-function renderServerView(){
-  document.getElementById('cfg-edit-btn').style.display = '';
-}
-
-// ── Server configuration editing ──
+/* ══════════════════════════════════════════════
+   SERVER CONFIG EDITING
+══════════════════════════════════════════════ */
 async function editServer(){
   if(!_cfgSchema){
     try{ _cfgSchema = (await fetch(api('/server/schema')).then(r=>r.json())).fields; }
@@ -757,22 +2366,22 @@ async function editServer(){
   }
   document.getElementById('cfg-edit-btn').style.display = 'none';
   _editingServer = true;
-  const sv = _serverInfo || {directives:[]};
+  const sv   = _serverInfo || {directives:[]};
   const dirs = sv.directives || [];
-  const first = k => { const d = dirs.find(x=>x.key===k); return d ? d.value : null; };
+  const first = k => { const d=dirs.find(x=>x.key===k); return d?d.value:null; };
   const known = new Set(_cfgSchema.map(f=>f.key));
 
   const fieldHtml = f => {
     const cur = first(f.key);
-    const id = 'cf-'+f.key;
-    let ctrl='';
+    const id  = 'cf-'+f.key;
+    let ctrl  = '';
     if(f.type==='toggle'){
-      ctrl = `<div class="ctrl"><input type="checkbox" id="${id}" ${cur!==null?'checked':''}> <label for="${id}" style="font-size:13.5px;color:var(--muted)">Activado</label></div>`;
+      ctrl = `<div class="ctrl"><input type="checkbox" id="${id}" ${cur!==null?'checked':''}> <label for="${id}" style="font-size:13.5px;color:var(--muted)">Enabled</label></div>`;
     }else if(f.type==='select'){
-      ctrl = `<select id="${id}">`+(cur && !f.options.includes(cur)?`<option value="${esc(cur)}">${esc(cur)} (actual)</option>`:'')+
+      ctrl = `<select id="${id}">`+(cur&&!f.options.includes(cur)?`<option value="${esc(cur)}">${esc(cur)} (current)</option>`:'')+
         f.options.map(o=>`<option ${o===cur?'selected':''}>${esc(o)}</option>`).join('')+`</select>`;
     }else{
-      const type = f.type==='number'?'number':'text';
+      const type  = f.type==='number'?'number':'text';
       const extra = f.type==='number'?`${f.min!==undefined?`min="${f.min}"`:''} ${f.max!==undefined?`max="${f.max}"`:''}`:'';
       ctrl = `<input type="${type}" id="${id}" value="${cur!==null?esc(cur):''}" ${extra} data-key="${f.key}">`;
     }
@@ -781,21 +2390,19 @@ async function editServer(){
       <div>${ctrl}<div class="errmsg" id="err-${f.key}"></div></div></div>`;
   };
 
-  // Solo OpenVPN permite editar directivas «en crudo»; en WireGuard NO, para no
-  // tocar la clave privada ni los bloques [Peer] de los dispositivos.
   const allowAdvanced = BACKEND === 'openvpn';
-  const advanced = allowAdvanced ? dirs.filter(d => !known.has(d.key)) : [];
-  const advHtml = advanced.map((d,i)=>advRowHtml(d.key,d.value,i)).join('');
-  const advSection = allowAdvanced ? `
-      <div class="cfgsub">Other directives (advanced)</div>
-      <div id="adv-rows">${advHtml}</div>` : '<div id="adv-rows"></div>';
+  const advanced = allowAdvanced ? dirs.filter(d=>!known.has(d.key)) : [];
+  const advHtml  = advanced.map((d,i)=>advRowHtml(d.key,d.value,i)).join('');
+  const advSection = allowAdvanced
+    ? `<div class="cfgsub">Other directives (advanced)</div><div id="adv-rows">${advHtml}</div>`
+    : '<div id="adv-rows"></div>';
 
   document.getElementById('server-info').innerHTML = `
     <div class="cfgform" id="cfgform">
       ${_cfgSchema.map(fieldHtml).join('')}
       ${advSection}
       <div class="cfgbar">
-        ${allowAdvanced ? '<button class="btn addadv" type="button" onclick="addAdvRow()">+ Add directive</button>' : ''}
+        ${allowAdvanced?'<button class="btn addadv" type="button" onclick="addAdvRow()">+ Add directive</button>':''}
         <button class="btn" type="button" onclick="cancelServer()">Cancel</button>
         <button class="btn primary" type="button" onclick="saveServer()">Save configuration</button>
       </div>
@@ -805,11 +2412,10 @@ function advRowHtml(k,v,i){
   return `<div class="advrow" data-adv>
     <input type="text" placeholder="directive" value="${esc(k)}" data-advkey>
     <input type="text" placeholder="value" value="${esc(v)}" data-advval>
-    <button class="del" type="button" title="Remove" onclick="this.parentNode.remove()">×</button></div>`;
+    <button class="del" type="button" title="Remove" onclick="this.parentNode.remove()">&#x2715;</button></div>`;
 }
 function addAdvRow(){ document.getElementById('adv-rows').insertAdjacentHTML('beforeend', advRowHtml('','')); }
 function cancelServer(){ _editingServer=false; renderServer(_serverInfo); document.getElementById('cfg-edit-btn').style.display=''; }
-
 async function saveServer(){
   const directives = [];
   for(const f of _cfgSchema){
@@ -824,67 +2430,90 @@ async function saveServer(){
     if(k) directives.push({key:k, value:v});
   });
   try{
-    const r = await fetch(api('/server'),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({directives})});
-    const d = await r.json().catch(()=>({}));
+    const r=await fetch(api('/server'),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({directives})});
+    const d=await r.json().catch(()=>({}));
     if(!r.ok){ toast(d.detail||'Could not save the configuration.'); return; }
-    _serverInfo = d;
-    _editingServer = false;
-    toast('Configuration saved ✓ · remember to “Reload” the service');
-    renderServer(d);
-    document.getElementById('cfg-edit-btn').style.display='';
+    _serverInfo=d; _editingServer=false;
+    toast('Configuration saved ✓ · remember to "Reload" the service');
+    renderServer(d); document.getElementById('cfg-edit-btn').style.display='';
   }catch(e){ toast('Could not connect to the server.'); }
 }
 
+/* ══════════════════════════════════════════════
+   STATS
+══════════════════════════════════════════════ */
 function renderStats(st, cl, cn){
-  document.getElementById('st-svc').innerHTML = st.active?'Active':'<small style="color:var(--stop)">Stopped</small>';
+  const svcEl = document.getElementById('st-svc');
+  svcEl.innerHTML = st.active
+    ? '<span style="color:var(--ok)">Active</span>'
+    : '<small style="color:var(--stop)">Stopped</small>';
   document.getElementById('st-active').textContent = cl.filter(c=>c.status==='valid').length;
-  document.getElementById('st-conns').textContent = cn.length;
-  document.getElementById('st-other').textContent = cl.filter(c=>c.status!=='valid').length;
+  document.getElementById('st-conns').textContent  = cn.length;
+  document.getElementById('st-other').textContent  = cl.filter(c=>c.status!=='valid').length;
   document.getElementById('nav-clients').textContent = cl.length;
-  document.getElementById('nav-conns').textContent = cn.length;
+  document.getElementById('nav-conns').textContent   = cn.length;
 }
 
+/* ══════════════════════════════════════════════
+   CLIENTS
+══════════════════════════════════════════════ */
 function renderClients(cl){
   document.getElementById('clients').innerHTML = cl.length ? cl.map(c=>{
-    const s=CLIENT_STATE[c.status]||{cls:'',dot:'idle',label:c.status};
+    const s = CLIENT_STATE[c.status]||{cls:'',dot:'idle',label:c.status};
     const caduca = c.status==='valid'&&c.expires_at ? 'Expires '+fmtDate(c.expires_at)
       : (c.status==='expired'&&c.expires_at ? 'Expired '+fmtDate(c.expires_at) : '');
-    const n=esc(c.name);
-    const enc=encodeURIComponent(c.name);
-    const w = can('clients:write');
+    const n   = esc(c.name);
+    const enc = encodeURIComponent(c.name);
+    const w   = can('clients:write');
     let actions='';
     if(c.status==='valid'){
       const qr = BACKEND==='wireguard' ? `<a class="act" href="${api('/clients/'+enc+'/qr')}" target="_blank">QR code</a>` : '';
       const wr = w ? `<button class="act" onclick="saveConfig('${n}')">Save to server</button>
         <button class="act" onclick="emailConfig('${n}')">Send by email</button>
-        <button class="act danger" onclick="revokeClient('${n}')">Revoke access</button>` : '';
+        <button class="act danger" onclick="revokeClient('${n}')">Revoke</button>` : '';
       actions=`<div class="actions">
         <a class="act" href="${api('/clients/'+enc+'/config')}" download>Download</a>${qr}${wr}</div>`;
-    } else if(c.status==='expired' && w){
+    }else if(c.status==='expired'&&w){
       actions=`<div class="actions"><button class="act" onclick="renewClient('${n}')">Renew access</button></div>`;
     }
-    return `<div class="row"><div><div class="name">${n}</div>${caduca?`<div class="meta">${caduca}</div>`:''}${actions}</div>
-      <div class="right"><span class="state ${s.cls}"><span class="dot ${s.dot}"></span>${s.label}</span></div></div>`;
+    return `<div class="row">
+      <div style="flex:1">
+        <div class="name">${n}</div>
+        ${caduca?`<div class="meta">${caduca}</div>`:''}
+        ${actions}
+      </div>
+      <div class="right"><span class="pill ${s.dot}">${s.label}</span></div>
+    </div>`;
   }).join('') : `<div class="empty">No devices have access yet.</div>`;
 }
 
 function renderConns(cn){
   document.getElementById('conns').innerHTML = cn.length ? cn.map(c=>{
-    const n=esc(c.name);
-    const disc = (BACKEND==='openvpn' && can('clients:write')) ? `<div class="actions"><button class="act danger" onclick="disconnectClient('${n}')">Disconnect</button></div>` : '';
-    return `<div class="row"><div><div class="name">${n}</div>
-      <div class="meta">Network address: ${esc(c.virtual_address)||'—'} · ${esc(c.real_address)||'—'}</div>
-      ${disc}</div>
-      <div class="right"><span class="state s-ok"><span class="dot ok"></span>Connected · ${since(c.connected_since)}</span>
-      <span class="sub">↓ ${fmtBytes(c.bytes_received)}  ·  ↑ ${fmtBytes(c.bytes_sent)}</span></div></div>`;
+    const n    = esc(c.name);
+    const disc = (BACKEND==='openvpn'&&can('clients:write'))
+      ? `<div class="actions"><button class="act danger" onclick="disconnectClient('${n}')">Disconnect</button></div>` : '';
+    return `<div class="row">
+      <div style="flex:1">
+        <div class="name">${n}</div>
+        <div class="meta">Network: ${esc(c.virtual_address)||'—'} · ${esc(c.real_address)||'—'}</div>
+        ${disc}
+      </div>
+      <div class="right">
+        <span class="pill ok">Connected · ${since(c.connected_since)}</span>
+        <span class="sub">↓ ${fmtBytes(c.bytes_received)} · ↑ ${fmtBytes(c.bytes_sent)}</span>
+      </div>
+    </div>`;
   }).join('') : `<div class="empty">Nobody is connected right now.</div>`;
 }
 
+/* ══════════════════════════════════════════════
+   LOGS
+══════════════════════════════════════════════ */
 async function loadLogs(){
   try{
-    const d = await fetch(api('/logs')).then(r=>r.json());
+    const d   = await fetch(api('/logs')).then(r=>r.json());
     const box = document.getElementById('logs-pre');
-    if(!d.lines || !d.lines.length){ box.textContent='(no logs available)'; return; }
+    if(!d.lines||!d.lines.length){ box.textContent='(no logs available)'; return; }
     box.innerHTML = d.lines.map(l=>{
       const cls = /ERROR|revoked|reset|fail/i.test(l) ? 'lg-err' : (/Completed|established|OK/i.test(l)?'lg-ok':'');
       return `<span class="${cls}">${esc(l)}</span>`;
@@ -893,12 +2522,14 @@ async function loadLogs(){
   }catch(e){ document.getElementById('logs-pre').textContent='Could not load logs.'; }
 }
 
-// ── Service actions ──
+/* ══════════════════════════════════════════════
+   SERVICE ACTIONS
+══════════════════════════════════════════════ */
 async function svcAction(action){
   const labels={reload:'reload',restart:'restart',stop:'stop',start:'start'};
-  if((action==='stop'||action==='restart') && !confirm(`Are you sure you want to ${labels[action]} the VPN?${action!=='reload'?'\n\nConnected users will be disconnected.':''}`)) return;
+  if((action==='stop'||action==='restart')&&!confirm(`Are you sure you want to ${labels[action]} the VPN?${action!=='reload'?'\n\nConnected users will be disconnected.':''}`)) return;
   try{
-    const r = await fetch(api('/service/'+action),{method:'POST'});
+    const r=await fetch(api('/service/'+action),{method:'POST'});
     if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'Could not complete the action.'); return; }
     toast('Service: '+labels[action]+' ✓');
     await load();
@@ -906,9 +2537,20 @@ async function svcAction(action){
 }
 function toggleService(){ svcAction(_serviceActive?'stop':'start'); }
 
-// ── Add / remove ──
-function toggleForm(open){ document.getElementById('add-form').classList.toggle('open',open); document.getElementById('add-btn').style.visibility=open?'hidden':'visible'; hint(''); if(open) setTimeout(()=>document.getElementById('add-name').focus(),30); }
-function hint(msg,bad){ const h=document.getElementById('add-hint'); h.textContent=msg; h.className='formhint'+(bad?' bad':''); h.style.display=msg?'block':'none'; }
+/* ══════════════════════════════════════════════
+   ADD / REMOVE DEVICES
+══════════════════════════════════════════════ */
+function toggleForm(open){
+  document.getElementById('add-form').classList.toggle('open',open);
+  document.getElementById('add-btn').style.visibility = open?'hidden':'visible';
+  hint('');
+  if(open) setTimeout(()=>document.getElementById('add-name').focus(),30);
+}
+function hint(msg,bad){
+  const h=document.getElementById('add-hint');
+  h.textContent=msg; h.className='formhint'+(bad?' bad':'');
+  h.style.display=msg?'block':'none';
+}
 async function createClient(){
   const input=document.getElementById('add-name'); const name=input.value.trim();
   if(!name){ hint('Enter a name to identify the person or device.',true); return; }
@@ -920,7 +2562,7 @@ async function createClient(){
   }catch(e){ hint('Could not connect to the server.',true); }
 }
 async function revokeClient(name){
-  if(!confirm(`Are you sure you want to revoke access for "${name}"?\n\nThey will no longer be able to connect. This action cannot be undone.`)) return;
+  if(!confirm(`Are you sure you want to revoke access for "${name}"?\n\nThis action cannot be undone.`)) return;
   try{
     const r=await fetch(api(`/clients/${encodeURIComponent(name)}/revoke`),{method:'POST'});
     if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'Could not revoke access.'); return; }
@@ -928,8 +2570,8 @@ async function revokeClient(name){
   }catch(e){ toast('Could not connect to the server.'); }
 }
 async function saveConfig(name){
-  const path = prompt(`In which server folder should I save the configuration for "${name}"?\n\n(Within the allowed export directory.)`, name);
-  if(path===null || !path.trim()) return;
+  const path=prompt(`In which server folder should I save the configuration for "${name}"?\n\n(Within the allowed export directory.)`, name);
+  if(path===null||!path.trim()) return;
   try{
     const r=await fetch(api(`/clients/${encodeURIComponent(name)}/save`),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path.trim()})});
     const d=await r.json().catch(()=>({}));
@@ -938,8 +2580,8 @@ async function saveConfig(name){
   }catch(e){ toast('Could not connect to the server.'); }
 }
 async function emailConfig(name){
-  const email = prompt(`Which email should I send the configuration for "${name}" to?\n\n(Email is not a secure channel; treat it like a credential.)`, '');
-  if(email===null || !email.trim()) return;
+  const email=prompt(`Which email should I send the configuration for "${name}" to?`,'');
+  if(email===null||!email.trim()) return;
   try{
     const r=await fetch(api(`/clients/${encodeURIComponent(name)}/email`),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.trim()})});
     const d=await r.json().catch(()=>({}));
@@ -963,23 +2605,24 @@ async function disconnectClient(name){
   }catch(e){ toast('Could not connect to the server.'); }
 }
 
-// ── Create Account Page ──────────────────────────────────────────────────
-let _caCurrentTab = 'openvpn';
-let _caCreatedName = '';
+/* ══════════════════════════════════════════════
+   CREATE ACCOUNT PAGE
+══════════════════════════════════════════════ */
+let _caCurrentTab   = 'openvpn';
+let _caCreatedName    = '';
 let _caCreatedBackend = '';
-let _caCreatedConfig = '';
+let _caCreatedConfig  = '';
 
 function caTabSwitch(backend){
   _caCurrentTab = backend;
   document.getElementById('ca-tab-ovpn').classList.toggle('active', backend==='openvpn');
-  document.getElementById('ca-tab-wg').classList.toggle('active', backend==='wireguard');
+  document.getElementById('ca-tab-wg').classList.toggle('active',   backend==='wireguard');
   const ovpnBody = document.getElementById('ca-tab-ovpn-body');
   const wgBody   = document.getElementById('ca-tab-wg-body');
-  if(ovpnBody) ovpnBody.style.display = backend==='openvpn' ? '' : 'none';
+  if(ovpnBody) ovpnBody.style.display = backend==='openvpn'   ? '' : 'none';
   if(wgBody)   wgBody.style.display   = backend==='wireguard' ? '' : 'none';
   caLoadRecent();
 }
-
 async function caLoadRecent(){
   const el = document.getElementById('ca-recent-list');
   if(!el) return;
@@ -989,30 +2632,29 @@ async function caLoadRecent(){
     if(!r.ok){ el.innerHTML='<div class="err">Could not load accounts.</div>'; return; }
     const clients = await r.json();
     if(!clients.length){ el.innerHTML='<div class="empty">No accounts yet.</div>'; return; }
-    el.innerHTML = clients.map(c => {
-      const st = c.status==='valid'?'ok':c.status==='revoked'?'stop':'warn';
+    el.innerHTML = clients.map(c=>{
+      const st    = c.status==='valid'?'ok':c.status==='revoked'?'stop':'warn';
       const label = c.status==='valid'?'Active':c.status==='revoked'?'Revoked':'Expired';
-      const ext = _caCurrentTab==='wireguard' ? 'conf' : 'ovpn';
+      const ext   = _caCurrentTab==='wireguard' ? 'conf' : 'ovpn';
       const dlUrl = '/api/'+_caCurrentTab+'/clients/'+encodeURIComponent(c.name)+'/config';
       const qrBtn = _caCurrentTab==='wireguard' ? `<button class="act" onclick="caShowQR('${c.name}')">QR Code</button>` : '';
       return `<div class="row">
-        <div>
+        <div style="flex:1">
           <div class="name">${esc(c.name)}</div>
           <div class="meta">${_caCurrentTab==='openvpn'?'OpenVPN':'WireGuard'} · ${c.expires_at ? 'Expires '+c.expires_at.slice(0,10) : 'No expiry'}</div>
         </div>
         <div class="right">
-          <span class="state s-${st}"><span class="dot ${st}"></span>${label}</span>
-          <div class="actions">
+          <span class="pill ${st}">${label}</span>
+          <div class="actions" style="flex-direction:row;margin-top:0">
             ${c.status==='valid'?`<a class="act" href="${dlUrl}" download="${c.name}.${ext}">Download</a>`:''}
             ${qrBtn}
-            ${c.status==='valid' && can('clients:write') ? `<button class="act danger" onclick="caRevoke('${esc(c.name)}')">Revoke</button>` : ''}
+            ${c.status==='valid'&&can('clients:write')?`<button class="act danger" onclick="caRevoke('${esc(c.name)}')">Revoke</button>`:''}
           </div>
         </div>
       </div>`;
     }).join('');
   }catch(e){ el.innerHTML='<div class="err">Connection error.</div>'; }
 }
-
 async function caCreate(backend){
   const inputId = backend==='openvpn' ? 'ovpn-new-name' : 'wg-new-name';
   const btnId   = backend==='openvpn' ? 'ovpn-create-btn' : 'wg-create-btn';
@@ -1021,128 +2663,94 @@ async function caCreate(backend){
   const btn     = document.getElementById(btnId);
   const errEl   = document.getElementById(errId);
   const name    = input.value.trim();
-
   errEl.classList.remove('show'); errEl.textContent='';
   if(!name){ errEl.textContent='Enter a name for this account.'; errEl.classList.add('show'); return; }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="ca-spinner"></span>Creating…';
-
+  btn.disabled=true; btn.innerHTML='<span class="ca-spinner"></span>Creating…';
   try{
-    const r = await fetch('/api/'+backend+'/clients', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({name})
-    });
-    const d = await r.json().catch(()=>({}));
-    if(!r.ok){ errEl.textContent = d.detail||'Could not create account.'; errEl.classList.add('show'); return; }
-
-    // Fetch the config file
+    const r=await fetch('/api/'+backend+'/clients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){ errEl.textContent=d.detail||'Could not create account.'; errEl.classList.add('show'); return; }
     const cfgR = await fetch('/api/'+backend+'/clients/'+encodeURIComponent(name)+'/config');
     const cfgText = cfgR.ok ? await cfgR.text() : '(config unavailable)';
-
-    _caCreatedName    = name;
-    _caCreatedBackend = backend;
-    _caCreatedConfig  = cfgText;
-
-    input.value = '';
+    _caCreatedName=name; _caCreatedBackend=backend; _caCreatedConfig=cfgText;
+    input.value='';
     await caModalOpen(name, backend, cfgText);
-    
-    // Refresh list if current tab matches
-    if(_caCurrentTab === backend) caLoadRecent();
+    if(_caCurrentTab===backend) caLoadRecent();
     toast('Account created ✓');
-
   }catch(e){
-    errEl.textContent = 'Could not connect to the server.'; errEl.classList.add('show');
+    errEl.textContent='Could not connect to the server.'; errEl.classList.add('show');
   }finally{
-    btn.disabled = false;
-    const label = backend==='openvpn' ? 'Create OpenVPN Account' : 'Create WireGuard Account';
-    btn.innerHTML = label;
+    btn.disabled=false;
+    btn.innerHTML = backend==='openvpn' ? 'Create OpenVPN Account' : 'Create WireGuard Account';
   }
 }
-
 async function caModalOpen(name, backend, cfgText){
   const ext = backend==='wireguard' ? 'conf' : 'ovpn';
-  document.getElementById('ca-modal-title').textContent = 'Account Created: ' + name;
-  document.getElementById('ca-modal-msg').textContent   =
-    (backend==='openvpn'?'OpenVPN':'WireGuard') + ' account "' + name + '" is ready to use.';
+  document.getElementById('ca-modal-title').textContent = 'Account Created: '+name;
+  document.getElementById('ca-modal-msg').textContent   = (backend==='openvpn'?'OpenVPN':'WireGuard')+' account "'+name+'" is ready.';
   document.getElementById('ca-config-text').textContent = cfgText;
-  document.getElementById('ca-config-hint').textContent = 'Save this file as ' + name + '.' + ext;
-
-  // QR code for WireGuard
+  document.getElementById('ca-config-hint').textContent = 'Save this file as '+name+'.'+ext;
   const qrSection = document.getElementById('ca-qr-section');
   if(backend==='wireguard'){
     qrSection.style.display='';
-    const qrContainer = document.getElementById('ca-qr-container');
-    qrContainer.innerHTML='<div style="color:var(--muted);font-size:13px">Loading QR…</div>';
+    const qrC = document.getElementById('ca-qr-container');
+    qrC.innerHTML='<div style="color:var(--muted);font-size:13px">Loading QR…</div>';
     try{
       const qrR = await fetch('/api/wireguard/clients/'+encodeURIComponent(name)+'/qr');
       if(qrR.ok){
-        const svg = await qrR.text();
-        qrContainer.innerHTML = svg;
-        // Style the svg
-        const svgEl = qrContainer.querySelector('svg');
-        if(svgEl){ svgEl.style.cssText='width:180px;height:180px;border-radius:12px;background:#fff;padding:8px;border:1px solid var(--line)'; }
-      } else {
-        qrContainer.innerHTML='<div style="color:var(--muted);font-size:13px">QR not available</div>';
-      }
-    }catch(e){ qrContainer.innerHTML='<div style="color:var(--muted);font-size:13px">QR not available</div>'; }
-  } else {
-    qrSection.style.display='none';
-  }
-
+        const svg = await qrR.text(); qrC.innerHTML=svg;
+        const svgEl = qrC.querySelector('svg');
+        if(svgEl) svgEl.style.cssText='width:180px;height:180px;border-radius:12px;background:#fff;padding:8px;border:1px solid var(--border)';
+      }else{ qrC.innerHTML='<div style="color:var(--muted);font-size:13px">QR not available</div>'; }
+    }catch(e){ document.getElementById('ca-qr-container').innerHTML='<div style="color:var(--muted);font-size:13px">QR not available</div>'; }
+  }else{ qrSection.style.display='none'; }
   document.getElementById('ca-modal-overlay').classList.add('open');
 }
-
-function caModalClose(){
-  document.getElementById('ca-modal-overlay').classList.remove('open');
-}
-
+function caModalClose(){ document.getElementById('ca-modal-overlay').classList.remove('open'); }
 function caDownloadConfig(){
-  const ext  = _caCreatedBackend==='wireguard' ? 'conf' : 'ovpn';
-  const blob = new Blob([_caCreatedConfig], {type:'text/plain'});
+  const ext  = _caCreatedBackend==='wireguard'?'conf':'ovpn';
+  const blob = new Blob([_caCreatedConfig],{type:'text/plain'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href=url; a.download=_caCreatedName+'.'+ext; a.click();
   URL.revokeObjectURL(url);
 }
-
 function caCopyConfig(){
   navigator.clipboard.writeText(_caCreatedConfig).then(()=>toast('Copied to clipboard ✓')).catch(()=>toast('Copy failed'));
 }
-
 async function caShowQR(name){
   _caCreatedName=''; _caCreatedBackend='wireguard'; _caCreatedConfig='';
-  document.getElementById('ca-modal-title').textContent = 'WireGuard QR: ' + name;
+  document.getElementById('ca-modal-title').textContent = 'WireGuard QR: '+name;
   document.getElementById('ca-modal-msg').textContent   = 'Scan with the WireGuard mobile app.';
   document.getElementById('ca-config-text').textContent = 'Loading…';
   document.getElementById('ca-config-hint').textContent = '';
   const qrSection = document.getElementById('ca-qr-section');
   qrSection.style.display='';
-  const qrContainer = document.getElementById('ca-qr-container');
-  qrContainer.innerHTML='Loading…';
+  const qrC = document.getElementById('ca-qr-container');
+  qrC.innerHTML='Loading…';
   document.getElementById('ca-modal-overlay').classList.add('open');
-
   try{
-    const [cfgR, qrR] = await Promise.all([
+    const [cfgR,qrR] = await Promise.all([
       fetch('/api/wireguard/clients/'+encodeURIComponent(name)+'/config'),
       fetch('/api/wireguard/clients/'+encodeURIComponent(name)+'/qr')
     ]);
     if(cfgR.ok){ const t=await cfgR.text(); _caCreatedConfig=t; document.getElementById('ca-config-text').textContent=t; document.getElementById('ca-config-hint').textContent='Save as '+name+'.conf'; _caCreatedName=name; }
-    if(qrR.ok){ const svg=await qrR.text(); qrContainer.innerHTML=svg; const s=qrContainer.querySelector('svg'); if(s) s.style.cssText='width:180px;height:180px;border-radius:12px;background:#fff;padding:8px;border:1px solid var(--line)'; }
-    else { qrContainer.innerHTML='<div style="color:var(--muted);font-size:13px">QR not available</div>'; }
-  }catch(e){ qrContainer.innerHTML='<div style="color:var(--muted);font-size:13px">Connection error</div>'; }
+    if(qrR.ok){ const svg=await qrR.text(); qrC.innerHTML=svg; const s=qrC.querySelector('svg'); if(s) s.style.cssText='width:180px;height:180px;border-radius:12px;background:#fff;padding:8px;border:1px solid var(--border)'; }
+    else{ qrC.innerHTML='<div style="color:var(--muted);font-size:13px">QR not available</div>'; }
+  }catch(e){ qrC.innerHTML='<div style="color:var(--muted);font-size:13px">Connection error</div>'; }
 }
-
 async function caRevoke(name){
   if(!confirm('Revoke access for "'+name+'"?\n\nThis cannot be undone.')) return;
   try{
-    const r = await fetch('/api/'+_caCurrentTab+'/clients/'+encodeURIComponent(name)+'/revoke',{method:'POST'});
+    const r=await fetch('/api/'+_caCurrentTab+'/clients/'+encodeURIComponent(name)+'/revoke',{method:'POST'});
     if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'Could not revoke.'); return; }
     toast('Revoked ✓'); caLoadRecent();
   }catch(e){ toast('Connection error.'); }
 }
 
-// Close modal on overlay click (element is below the script tag, so defer)
+/* ══════════════════════════════════════════════
+   MODAL OVERLAY CLICK
+══════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function(){
   const overlay = document.getElementById('ca-modal-overlay');
   if(overlay) overlay.addEventListener('click', function(e){
@@ -1150,7 +2758,9 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 });
 
-// Extend showPage: also trigger caLoadRecent when Create Account is shown
+/* ══════════════════════════════════════════════
+   EXTEND showPage FOR CREATE ACCOUNT
+══════════════════════════════════════════════ */
 (function(){
   const _base = showPage;
   showPage = function(id){
@@ -1159,6 +2769,9 @@ document.addEventListener('DOMContentLoaded', function(){
   };
 })();
 
+/* ══════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════ */
 (async () => {
   await loadMe();
   applyBackend('openvpn');
@@ -1168,7 +2781,9 @@ document.addEventListener('DOMContentLoaded', function(){
 setInterval(load, 10000);
 </script>
 
-<!-- Create Account Result Modal -->
+<!-- ═══════════════════════════════════════
+     CREATE ACCOUNT RESULT MODAL
+═══════════════════════════════════════ -->
 <div class="ca-modal-overlay" id="ca-modal-overlay">
   <div class="ca-modal">
     <div class="ca-modal-head">
@@ -1186,7 +2801,6 @@ setInterval(load, 10000);
         <div class="ca-actions-row">
           <button class="btn primary" onclick="caDownloadConfig()">&#x21E9; Download Config</button>
           <button class="btn" onclick="caCopyConfig()">&#x29C9; Copy</button>
-          <a id="ca-dl-link" style="display:none"></a>
         </div>
         <p class="ca-hint" id="ca-config-hint"></p>
       </div>
