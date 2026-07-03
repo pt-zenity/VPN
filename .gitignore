@@ -39,3 +39,4 @@ sandbox/exports/
 
 # Almacén de usuarios del panel (local)
 sandbox/data/
+.github/workflows/
