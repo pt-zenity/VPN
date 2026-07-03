@@ -1432,6 +1432,187 @@ select.inline-select {
   .row { flex-wrap: wrap; }
   .ca-modal-head h3 { font-size: 15px; }
 }
+
+/* ════════════════════════════════════════════════
+   REAL-TIME LIVE UI — ANIMATIONS & INDICATORS
+════════════════════════════════════════════════ */
+
+/* ── Pulsing dot animation (running service) ── */
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(5,150,105,.5), 0 0 0 3px var(--ok-soft); }
+  60%  { box-shadow: 0 0 0 7px rgba(5,150,105,0), 0 0 0 3px var(--ok-soft); }
+  100% { box-shadow: 0 0 0 0 rgba(5,150,105,0),   0 0 0 3px var(--ok-soft); }
+}
+@keyframes pulse-ring-warn {
+  0%   { box-shadow: 0 0 0 0 rgba(217,119,6,.5), 0 0 0 3px var(--warn-soft); }
+  60%  { box-shadow: 0 0 0 7px rgba(217,119,6,0), 0 0 0 3px var(--warn-soft); }
+  100% { box-shadow: 0 0 0 0 rgba(217,119,6,0),   0 0 0 3px var(--warn-soft); }
+}
+.dot.ok   { animation: pulse-ring 2s ease-out infinite; }
+.dot.warn { animation: pulse-ring-warn 2s ease-out infinite; }
+
+/* ── Topbar live indicator ── */
+.topbar-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.live-dot {
+  width: 6px; height: 6px;
+  background: var(--ok);
+  border-radius: 50%;
+  animation: live-blink 2.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes live-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .25; }
+}
+.live-dot.syncing { background: var(--warn); animation: spin .6s linear infinite; border-radius: 0; clip-path: none; }
+@keyframes spin-ring {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Stat card flash on value change ── */
+@keyframes stat-flash {
+  0%   { background: var(--accent-soft); }
+  100% { background: var(--surface); }
+}
+.stat.flash { animation: stat-flash .6s ease-out forwards; }
+
+/* ── Skeleton loader shimmer ── */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--r-sm);
+  display: inline-block;
+}
+.skeleton-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+}
+.skeleton-row + .skeleton-row { border-top: 1px solid var(--border); }
+.sk-line  { height: 14px; border-radius: 6px; }
+.sk-short { width: 40%; }
+.sk-med   { width: 65%; }
+.sk-long  { width: 90%; }
+.sk-name  { height: 16px; width: 55%; border-radius: 6px; }
+
+/* ── Stat value number animation ── */
+.stat .v {
+  transition: color .3s ease;
+}
+.stat .v.counting {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Log box LIVE header ── */
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.log-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--ok);
+  background: var(--ok-soft);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+.log-live-badge .ldot {
+  width: 5px; height: 5px;
+  background: var(--ok);
+  border-radius: 50%;
+  animation: live-blink 1.2s ease-in-out infinite;
+}
+.log-live-badge.paused { color: var(--muted); background: var(--surface-2); }
+.log-live-badge.paused .ldot { background: var(--faint); animation: none; }
+.log-meta { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.logbox-wrap { position: relative; }
+.logbox-scroll-btn {
+  position: absolute;
+  right: 14px; bottom: 14px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+  z-index: 3;
+}
+.logbox-scroll-btn.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+/* ── Connection uptime live tick ── */
+.conn-uptime {
+  font-variant-numeric: tabular-nums;
+  color: var(--ok);
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+/* ── Data-refresh wave on panel ── */
+@keyframes panel-refresh {
+  0%   { opacity: 1; }
+  30%  { opacity: .7; }
+  100% { opacity: 1; }
+}
+.panel.refreshing { animation: panel-refresh .4s ease-in-out; }
+
+/* ── Toast variants ── */
+.toast { display: flex; align-items: center; gap: 8px; }
+.toast .t-icon { font-size: 15px; flex-shrink: 0; }
+.toast.ok-toast   { background: #064e3b; border-left: 3px solid var(--ok); }
+.toast.err-toast  { background: #7f1d1d; border-left: 3px solid var(--stop); }
+.toast.info-toast { background: #111827; border-left: 3px solid var(--accent); }
+
+/* ── Topbar last-updated pill ── */
+.topbar-updated {
+  font-size: 11.5px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  transition: color .3s;
+  flex-shrink: 0;
+}
+.topbar-updated.fresh { color: var(--ok); }
+
+/* ── Service status bounce on change ── */
+@keyframes svc-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.svc-t.popped { animation: svc-pop .35s cubic-bezier(.4,0,.2,1); }
+
+/* ── Spin keyframes — already defined above for .ca-spinner ── */
 </style>
 </head>
 <body>
@@ -1617,6 +1798,10 @@ select.inline-select {
       </button>
       <div class="topbar-title">VPN <span>Manager</span></div>
       <div class="topbar-spacer"></div>
+      <div class="topbar-live" id="topbar-live" title="Data auto-refreshes every 10 seconds">
+        <span class="live-dot" id="live-dot"></span>
+        <span id="topbar-updated" class="topbar-updated">—</span>
+      </div>
       <div class="topbar-svc">
         <span class="dot idle" id="topbar-dot"></span>
         <span id="topbar-svc-label">Checking…</span>
@@ -1686,7 +1871,10 @@ select.inline-select {
           </div>
         </div>
         <div class="panel">
-          <div id="server-info"><div class="empty">Loading…</div></div>
+          <div id="server-info"><div class="skeleton-row">
+            <span class="skeleton sk-long" style="display:block;margin-bottom:8px">&nbsp;</span>
+            <span class="skeleton sk-med"  style="display:block">&nbsp;</span>
+          </div></div>
         </div>
       </section>
 
@@ -1708,7 +1896,13 @@ select.inline-select {
             <button class="btn" onclick="toggleForm(false)">Cancel</button>
           </div>
           <div class="formhint" id="add-hint" style="display:none"></div>
-          <div id="clients"><div class="empty">Loading…</div></div>
+          <div id="clients"><div class="skeleton-row">
+            <span class="skeleton sk-name" style="display:block;margin-bottom:8px">&nbsp;</span>
+            <span class="skeleton sk-short" style="display:block;height:12px">&nbsp;</span>
+          </div><div class="skeleton-row">
+            <span class="skeleton sk-name" style="display:block;margin-bottom:8px">&nbsp;</span>
+            <span class="skeleton sk-med" style="display:block;height:12px">&nbsp;</span>
+          </div></div>
         </div>
       </section>
 
@@ -1722,7 +1916,10 @@ select.inline-select {
             </div>
           </div>
         </div>
-        <div class="panel" id="conns"><div class="empty">Loading…</div></div>
+        <div class="panel" id="conns"><div class="skeleton-row">
+          <span class="skeleton sk-name" style="display:block;margin-bottom:8px">&nbsp;</span>
+          <span class="skeleton sk-short" style="display:block;height:12px">&nbsp;</span>
+        </div></div>
       </section>
 
       <!-- ── Logs ── -->
@@ -1733,7 +1930,7 @@ select.inline-select {
               <h2>Server logs</h2>
               <p class="hint" id="logs-hint">Last lines of the server log.</p>
             </div>
-            <button class="btn" onclick="loadLogs()">
+            <button class="btn" onclick="loadLogs(true)">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                 <polyline points="23 4 23 10 17 10"/>
                 <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -1742,7 +1939,18 @@ select.inline-select {
             </button>
           </div>
         </div>
-        <div class="panel"><pre class="logbox" id="logs-pre">Loading…</pre></div>
+        <div class="panel">
+          <div class="log-header">
+            <span class="log-live-badge" id="log-live-badge">
+              <span class="ldot"></span> LIVE
+            </span>
+            <span class="log-meta" id="log-meta">—</span>
+          </div>
+          <div class="logbox-wrap">
+            <pre class="logbox" id="logs-pre">Loading…</pre>
+            <button class="logbox-scroll-btn" id="log-scroll-btn" onclick="logScrollBottom()">↓ Jump to bottom</button>
+          </div>
+        </div>
       </section>
 
       <!-- ── Create Account ── -->
@@ -1892,11 +2100,108 @@ const since = s => {
   if(h<24) return h+'h '+(m%60)+'min ago';
   return Math.floor(h/24)+' days ago';
 };
+
+/* ── Live duration formatter (hh:mm:ss) ── */
+function fmtDuration(seconds){
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  if(h > 0) return h+'h '+(m+'').padStart(2,'0')+'m '+(ss+'').padStart(2,'0')+'s';
+  if(m > 0) return (m+'')+'m '+(ss+'').padStart(2,'0')+'s';
+  return ss+'s';
+}
+
+/* ── "X sec ago" formatter for topbar ── */
+function fmtAgo(date){
+  if(!date) return '—';
+  const diff = Math.round((Date.now() - date) / 1000);
+  if(diff < 5)  return 'just now';
+  if(diff < 60) return diff+'s ago';
+  if(diff < 120) return '1m ago';
+  return Math.floor(diff/60)+'m ago';
+}
+
 const CLIENT_STATE = {
   valid:   {cls:'s-ok',  dot:'ok',   label:'Access active'},
   revoked: {cls:'s-stop',dot:'stop', label:'Access revoked'},
   expired: {cls:'s-warn',dot:'warn', label:'Expired'}
 };
+/* ══════════════════════════════════════════════
+   LIVE STATE TRACKING
+══════════════════════════════════════════════ */
+let _lastLoad = null;        // timestamp of last successful load
+let _loadCount = 0;          // total poll cycles
+let _connSinceMap = {};      // name → connected_since epoch ms for live ticking
+let _uptimeTicker = null;    // setInterval handle for uptime ticks
+let _logAutoScroll = true;   // whether log box auto-scrolls
+let _logLineCount  = 0;      // last known log line count
+let _prevStats = {};         // previous stat values for flash detection
+
+/* ── "Last updated" ticker in topbar ── */
+function startTopbarTicker(){
+  setInterval(()=>{
+    const el = document.getElementById('topbar-updated');
+    if(!el) return;
+    const txt = _lastLoad ? fmtAgo(_lastLoad) : '—';
+    el.textContent = txt;
+    const fresh = _lastLoad && (Date.now()-_lastLoad < 6000);
+    el.classList.toggle('fresh', !!fresh);
+  }, 1000);
+}
+
+/* ── Mark syncing: spinner on live-dot ── */
+function setSyncing(active){
+  const dot = document.getElementById('live-dot');
+  if(dot){
+    if(active){
+      dot.style.borderRadius = '50%';
+      dot.style.animation = 'spin .6s linear infinite';
+      dot.style.background = 'var(--accent)';
+    } else {
+      dot.style.animation = '';
+      dot.style.background = '';
+      dot.style.borderRadius = '';
+    }
+  }
+}
+
+/* ── Flash a stat card when value changes ── */
+function flashStat(el){
+  el.classList.remove('flash');
+  void el.offsetWidth; // reflow
+  el.classList.add('flash');
+}
+
+/* ── Animated number count-up ── */
+function animateNumber(el, target){
+  const prev = parseInt(el.dataset.prev||'0', 10);
+  el.dataset.prev = target;
+  if(isNaN(prev)||isNaN(target)||prev===target) return;
+  const diff   = target - prev;
+  const steps  = Math.min(Math.abs(diff), 20);
+  const dur    = 400; // ms
+  let  step    = 0;
+  const id = setInterval(()=>{
+    step++;
+    const val = Math.round(prev + (diff * step / steps));
+    el.textContent = val;
+    if(step >= steps){ el.textContent = target; clearInterval(id); }
+  }, dur / steps);
+}
+
+/* ── Live connection uptime ticking ── */
+function startUptimeTicker(){
+  if(_uptimeTicker) clearInterval(_uptimeTicker);
+  _uptimeTicker = setInterval(()=>{
+    const now = Date.now();
+    Object.entries(_connSinceMap).forEach(([name, sinceMs])=>{
+      const el = document.querySelector(`.conn-uptime[data-conn="${CSS.escape(name)}"]`);
+      if(el) el.textContent = fmtDuration((now - sinceMs) / 1000);
+    });
+  }, 1000);
+}
+
 let _serviceActive = true;
 
 /* ══════════════════════════════════════════════
@@ -1942,11 +2247,14 @@ function applyBackend(name){
 }
 
 /* ══════════════════════════════════════════════
-   TOAST
+   TOAST — enhanced with types
 ══════════════════════════════════════════════ */
-function toast(msg){
+function toast(msg, type='info'){
   const t = document.getElementById('toast');
-  t.textContent = msg;
+  const icons = { ok:'✓', err:'✗', info:'·' };
+  const cls   = { ok:'ok-toast', err:'err-toast', info:'info-toast' };
+  t.innerHTML = `<span class="t-icon">${icons[type]||'·'}</span><span>${esc(msg)}</span>`;
+  t.className = 'toast ' + (cls[type]||'info-toast');
   t.classList.add('show');
   clearTimeout(t._h);
   t._h = setTimeout(()=>t.classList.remove('show'), 2800);
@@ -1956,6 +2264,7 @@ function toast(msg){
    DATA LOAD
 ══════════════════════════════════════════════ */
 async function load(){
+  setSyncing(true);
   try{
     const [st, cl, cn, sv] = await Promise.all([
       fetch(api('/status')).then(r=>r.json()),
@@ -1963,14 +2272,20 @@ async function load(){
       fetch(api('/connections')).then(r=>r.json()),
       fetch(api('/server')).then(r=>r.json()),
     ]);
+    _lastLoad = Date.now();
+    _loadCount++;
     renderService(st);
     renderServer(sv);
     renderClients(cl);
     renderConns(cn);
     renderStats(st, cl, cn);
+    // Refresh logs silently if log page is visible
+    if(document.getElementById('logs').classList.contains('active')) loadLogs(false);
   }catch(e){
     document.getElementById('svc-title').textContent = 'No connection to panel';
     document.getElementById('svc-dot').className = 'dot warn';
+  } finally {
+    setSyncing(false);
   }
 }
 
@@ -1979,6 +2294,7 @@ async function load(){
 ══════════════════════════════════════════════ */
 function renderService(st){
   if(st.backend) applyBackend(st.backend);
+  const wasActive = _serviceActive;
   _serviceActive = !!st.active;
   const dot   = document.getElementById('svc-dot');
   const title = document.getElementById('svc-title');
@@ -1987,8 +2303,14 @@ function renderService(st){
   const tlbl  = document.getElementById('topbar-svc-label');
 
   dot.className  = 'dot '+(st.active?'ok':'stop');
-  title.textContent = st.active ? 'VPN running' : 'VPN stopped';
-  sub.textContent   = st.detail==='sandbox' ? 'test mode' : (st.active?'':'no one can connect');
+  const newTitle = st.active ? 'VPN running' : 'VPN stopped';
+  if(title.textContent !== newTitle){
+    title.textContent = newTitle;
+    title.classList.remove('popped');
+    void title.offsetWidth;
+    title.classList.add('popped');
+  }
+  sub.textContent = st.detail==='sandbox' ? 'test mode' : (st.active?'':'no one can connect');
   if(tdot)  tdot.className = 'dot '+(st.active?'ok':'stop');
   if(tlbl)  tlbl.textContent = (st.active ? 'VPN running' : 'VPN stopped') + (st.detail==='sandbox'?' · sandbox':'');
 
@@ -2350,9 +2672,10 @@ function setBackend(name){
   if(name === BACKEND) return;
   BACKEND = name;
   _editingServer=false; _serverInfo=null; _cfgSchema=null;
+  _logLineCount=0;
   document.querySelectorAll('#backend-switch button').forEach(b =>
     b.classList.toggle('on', b.dataset.b===name));
-  document.getElementById('server-info').innerHTML = '<div class="empty">Loading…</div>';
+  document.getElementById('server-info').innerHTML = `<div class="skeleton-row">${skeletonRows(2)}</div>`;
   document.getElementById('cfg-edit-btn').style.display = '';
   load(); loadLogs();
 }
@@ -2448,9 +2771,30 @@ function renderStats(st, cl, cn){
   svcEl.innerHTML = st.active
     ? '<span style="color:var(--ok)">Active</span>'
     : '<small style="color:var(--stop)">Stopped</small>';
-  document.getElementById('st-active').textContent = cl.filter(c=>c.status==='valid').length;
-  document.getElementById('st-conns').textContent  = cn.length;
-  document.getElementById('st-other').textContent  = cl.filter(c=>c.status!=='valid').length;
+
+  const nums = {
+    'st-active': cl.filter(c=>c.status==='valid').length,
+    'st-conns':  cn.length,
+    'st-other':  cl.filter(c=>c.status!=='valid').length,
+  };
+
+  Object.entries(nums).forEach(([id, val])=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const prev = _prevStats[id];
+    if(prev !== undefined && prev !== val){
+      // Flash the parent stat card
+      const card = el.closest('.stat');
+      if(card) flashStat(card);
+      // Animate number
+      el.classList.add('counting');
+      animateNumber(el, val);
+    } else {
+      el.textContent = val;
+    }
+    _prevStats[id] = val;
+  });
+
   document.getElementById('nav-clients').textContent = cl.length;
   document.getElementById('nav-conns').textContent   = cn.length;
 }
@@ -2458,8 +2802,20 @@ function renderStats(st, cl, cn){
 /* ══════════════════════════════════════════════
    CLIENTS
 ══════════════════════════════════════════════ */
+function skeletonRows(n=3){
+  return Array.from({length:n},()=>`
+    <div class="skeleton-row">
+      <span class="skeleton sk-name">&nbsp;</span>
+      <span class="skeleton sk-short" style="height:12px">&nbsp;</span>
+    </div>`).join('');
+}
+
 function renderClients(cl){
-  document.getElementById('clients').innerHTML = cl.length ? cl.map(c=>{
+  const box = document.getElementById('clients');
+  if(box.innerHTML.includes('Loading')) box.innerHTML = skeletonRows();
+
+  box.classList.add('refreshing');
+  box.innerHTML = cl.length ? cl.map(c=>{
     const s = CLIENT_STATE[c.status]||{cls:'',dot:'idle',label:c.status};
     const caduca = c.status==='valid'&&c.expires_at ? 'Expires '+fmtDate(c.expires_at)
       : (c.status==='expired'&&c.expires_at ? 'Expired '+fmtDate(c.expires_at) : '');
@@ -2489,10 +2845,24 @@ function renderClients(cl){
 }
 
 function renderConns(cn){
-  document.getElementById('conns').innerHTML = cn.length ? cn.map(c=>{
+  // Update live since-map
+  _connSinceMap = {};
+  cn.forEach(c=>{ if(c.connected_since) _connSinceMap[c.name]=new Date(c.connected_since).getTime(); });
+  startUptimeTicker();
+
+  const box = document.getElementById('conns');
+  box.classList.add('refreshing');
+
+  if(!cn.length){
+    box.innerHTML = `<div class="empty">Nobody is connected right now.</div>`;
+    return;
+  }
+  box.innerHTML = cn.map(c=>{
     const n    = esc(c.name);
     const disc = (BACKEND==='openvpn'&&can('clients:write'))
       ? `<div class="actions"><button class="act danger" onclick="disconnectClient('${n}')">Disconnect</button></div>` : '';
+    const sinceMs = c.connected_since ? new Date(c.connected_since).getTime() : null;
+    const initDur = sinceMs ? fmtDuration((Date.now()-sinceMs)/1000) : since(c.connected_since);
     return `<div class="row">
       <div style="flex:1">
         <div class="name">${n}</div>
@@ -2500,27 +2870,81 @@ function renderConns(cn){
         ${disc}
       </div>
       <div class="right">
-        <span class="pill ok">Connected · ${since(c.connected_since)}</span>
+        <span class="pill ok">Connected</span>
+        <span class="conn-uptime" data-conn="${n}">${initDur}</span>
         <span class="sub">↓ ${fmtBytes(c.bytes_received)} · ↑ ${fmtBytes(c.bytes_sent)}</span>
       </div>
     </div>`;
-  }).join('') : `<div class="empty">Nobody is connected right now.</div>`;
+  }).join('');
 }
 
 /* ══════════════════════════════════════════════
    LOGS
 ══════════════════════════════════════════════ */
-async function loadLogs(){
-  try{
-    const d   = await fetch(api('/logs')).then(r=>r.json());
+function logScrollBottom(){
+  const box = document.getElementById('logs-pre');
+  if(box){ box.scrollTop = box.scrollHeight; _logAutoScroll = true; }
+}
+
+/* Track whether user scrolled up — pause auto-scroll if so */
+(function setupLogScroll(){
+  document.addEventListener('DOMContentLoaded', ()=>{
     const box = document.getElementById('logs-pre');
+    const btn = document.getElementById('log-scroll-btn');
+    if(!box) return;
+    box.addEventListener('scroll', ()=>{
+      const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+      _logAutoScroll = atBottom;
+      const badge = document.getElementById('log-live-badge');
+      if(badge){
+        badge.classList.toggle('paused', !atBottom);
+        badge.innerHTML = atBottom
+          ? '<span class="ldot"></span> LIVE'
+          : '<span class="ldot"></span> PAUSED';
+      }
+      if(btn) btn.classList.toggle('show', !atBottom);
+    });
+  });
+})();
+
+async function loadLogs(manual=false){
+  const box    = document.getElementById('logs-pre');
+  const meta   = document.getElementById('log-meta');
+  const badge  = document.getElementById('log-live-badge');
+  if(!box) return;
+
+  // Show skeleton only on first load
+  if(!_logLineCount && box.textContent.startsWith('Loading')){
+    box.innerHTML = `<span class="skeleton sk-long" style="display:block;margin-bottom:6px">&nbsp;</span>
+      <span class="skeleton sk-med"  style="display:block;margin-bottom:6px">&nbsp;</span>
+      <span class="skeleton sk-long" style="display:block;margin-bottom:6px">&nbsp;</span>
+      <span class="skeleton sk-short" style="display:block">&nbsp;</span>`;
+  }
+
+  try{
+    const d = await fetch(api('/logs')).then(r=>r.json());
     if(!d.lines||!d.lines.length){ box.textContent='(no logs available)'; return; }
+
+    const newCount = d.lines.length;
+    const hasNew = newCount !== _logLineCount;
+    _logLineCount = newCount;
+
     box.innerHTML = d.lines.map(l=>{
       const cls = /ERROR|revoked|reset|fail/i.test(l) ? 'lg-err' : (/Completed|established|OK/i.test(l)?'lg-ok':'');
       return `<span class="${cls}">${esc(l)}</span>`;
     }).join('\n');
-    box.scrollTop = box.scrollHeight;
-  }catch(e){ document.getElementById('logs-pre').textContent='Could not load logs.'; }
+
+    if(meta){
+      const now = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      meta.textContent = `${newCount} lines · updated ${now}`;
+    }
+    if(badge){
+      badge.classList.remove('paused');
+      badge.innerHTML = '<span class="ldot"></span> LIVE';
+    }
+
+    if(_logAutoScroll || manual) box.scrollTop = box.scrollHeight;
+  }catch(e){ if(box.textContent.includes('Loading')) box.textContent='Could not load logs.'; }
 }
 
 /* ══════════════════════════════════════════════
@@ -2532,7 +2956,7 @@ async function svcAction(action){
   try{
     const r=await fetch(api('/service/'+action),{method:'POST'});
     if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'Could not complete the action.'); return; }
-    toast('Service: '+labels[action]+' ✓');
+    toast('Service: '+labels[action]+' ✓', 'ok');
     await load();
   }catch(e){ toast('Could not connect to the server.'); }
 }
@@ -2559,7 +2983,7 @@ async function createClient(){
   try{
     const r=await fetch(api('/clients'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
     if(!r.ok){ const d=await r.json().catch(()=>({})); hint(d.detail||'Could not create access.',true); return; }
-    input.value=''; toggleForm(false); toast('Access created ✓'); await load();
+    toast('Access created ✓', 'ok');
   }catch(e){ hint('Could not connect to the server.',true); }
 }
 async function revokeClient(name){
@@ -2778,6 +3202,8 @@ document.addEventListener('DOMContentLoaded', function(){
   applyBackend('openvpn');
   showPage('overview');
   load(); loadLogs();
+  startTopbarTicker();
+  startUptimeTicker();
 })();
 setInterval(load, 10000);
 </script>
