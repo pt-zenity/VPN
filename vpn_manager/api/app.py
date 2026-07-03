@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
+import segno  # QR code generation for 2FA
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
@@ -357,7 +358,6 @@ def me_2fa_setup(user: str = Depends(require_user)) -> dict:
     secret = totp.generate_secret()
     _users.set_totp_secret(user, secret)  # pendiente de confirmar
     uri = totp.provisioning_uri(secret, user)
-    import segno
     return {"secret": secret, "uri": uri, "qr": segno.make(uri, error="m").svg_inline(scale=4)}
 
 
@@ -732,9 +732,9 @@ def openvpn_config(name: str, user: str = Depends(require_user)) -> Response:
 @app.get("/api/openvpn/clients/{name}/qr", dependencies=_PROTECTED)
 def openvpn_qr(name: str) -> Response:
     try:
-        import segno
-    except ImportError:
-        raise HTTPException(status_code=501, detail="Missing 'segno' dependency for QR generation.")
+        config = _openvpn().client_config(name)
+    except VpnError as e:
+        raise _http(e) from e
     try:
         config = _openvpn().client_config(name)
     except VpnError as e:
