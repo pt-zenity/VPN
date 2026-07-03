@@ -113,13 +113,13 @@ def system_info() -> dict:
 
 def install_plan(backend: str, manager: str | None = None) -> dict:
     if backend not in BACKENDS:
-        raise InstallError(f"Backend no válido. Usa uno de: {', '.join(BACKENDS)}.")
+        raise InstallError(f"Invalid backend. Use one of: {', '.join(BACKENDS)}.")
     mgr = manager or detect_package_manager()
     if not mgr or mgr not in _INSTALL_CMD:
         return {"backend": backend, "supported": False, "package_manager": mgr,
                 "packages": [], "commands": []}
     packages = list(_PACKAGES[mgr][backend])
-    # RHEL/Fedora: OpenVPN vive en EPEL en RHEL y derivados.
+    # RHEL/Fedora: OpenVPN lives in EPEL on RHEL and derivatives.
     distro = detect_distro()
     if backend == "openvpn" and mgr in ("dnf", "yum") and "fedora" not in distro["id"]:
         packages = ["epel-release", *packages]
@@ -135,25 +135,25 @@ def install(backend: str, sandbox: bool, allow_install: bool, timeout: int = 600
     plan = install_plan(backend)
     if not plan["supported"]:
         raise InstallError(
-            "No se reconoce el gestor de paquetes de esta distribución; instala "
-            f"{backend} manualmente."
+            "Package manager not recognised for this distribution; install "
+            f"{backend} manually."
         )
     if sandbox:
         return {"installed": False, "simulated": True, "plan": plan,
-                "detail": "Sandbox: no se instala nada; este es el plan que se ejecutaría."}
+                "detail": "Sandbox: nothing is installed; this is the plan that would be executed."}
     if not allow_install:
         raise InstallError(
-            "Instalación deshabilitada. Activa VPNM_ALLOW_INSTALL=true para permitirla."
+            "Installation disabled. Set VPNM_ALLOW_INSTALL=true to enable it."
         )
     if os.geteuid() != 0:
-        raise InstallError("La instalación requiere ejecutarse como root.")
+        raise InstallError("Installation requires running as root.")
     output = []
     for cmd in plan["commands"]:  # pragma: no cover - requiere root + paquetes reales
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=True)
             output.append(r.stdout[-2000:])
         except subprocess.CalledProcessError as e:
-            raise InstallError(f"«{' '.join(cmd)}» falló: {e.stderr.strip() or e}") from e
+            raise InstallError(f"«{' '.join(cmd)}» failed: {e.stderr.strip() or e}") from e
         except (OSError, subprocess.TimeoutExpired) as e:
-            raise InstallError(f"No se pudo ejecutar «{' '.join(cmd)}»: {e}") from e
+            raise InstallError(f"Could not execute «{' '.join(cmd)}»: {e}") from e
     return {"installed": True, "simulated": False, "plan": plan, "output": "\n".join(output)}

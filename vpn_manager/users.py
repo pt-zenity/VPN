@@ -96,16 +96,16 @@ class UserStore:
         return u.get("totp_secret") if u else None
 
     def set_totp_secret(self, username: str, secret: str) -> None:
-        """Guarda un secreto pendiente de confirmar (aún no activo)."""
+        """Saves a pending secret (not yet active)."""
         if username not in self.users:
-            raise UserError(f"No existe el usuario «{username}».")
+            raise UserError(f"User \u00ab{username}\u00bb does not exist.")
         self.users[username]["totp_secret"] = secret
         self.users[username]["totp_enabled"] = False
         self._save()
 
     def enable_totp(self, username: str) -> None:
         if not self.users.get(username, {}).get("totp_secret"):
-            raise UserError("Primero genera el código QR (configurar).")
+            raise UserError("Generate the QR code first (setup).")
         self.users[username]["totp_enabled"] = True
         self._save()
 
@@ -123,28 +123,28 @@ class UserStore:
     def _check(username: str, role: str | None, password: str | None) -> None:
         if not _USERNAME_RE.match(username or ""):
             raise UserError(
-                "El usuario solo puede tener letras, números y . _ - (2 a 32 caracteres)."
+                "Username may only contain letters, numbers and . _ - (2 to 32 characters)."
             )
         if role is not None and role not in ROLES:
-            raise UserError(f"Rol no válido. Usa uno de: {', '.join(ROLES)}.")
+            raise UserError(f"Invalid role. Use one of: {', '.join(ROLES)}.")
         if password is not None and len(password) < 8:
-            raise UserError("La contraseña debe tener al menos 8 caracteres.")
+            raise UserError("Password must be at least 8 characters.")
 
     def add(self, username: str, password: str, role: str) -> None:
         self._check(username, role, password)
         if username in self.users:
-            raise UserError(f"Ya existe un usuario «{username}».")
+            raise UserError(f"User \u00ab{username}\u00bb already exists.")
         self.users[username] = {"password_hash": auth.hash_password(password), "role": role}
         self._save()
 
     def update(self, username: str, role: str | None = None, password: str | None = None) -> None:
         if username not in self.users:
-            raise UserError(f"No existe el usuario «{username}».")
+            raise UserError(f"User \u00ab{username}\u00bb does not exist.")
         self._check(username, role, password)
         if role is not None:
-            # No dejar el sistema sin administradores.
+            # Do not leave the system without administrators.
             if self.users[username]["role"] == "admin" and role != "admin" and self._admins() == [username]:
-                raise UserError("No puedes quitar el último administrador.")
+                raise UserError("You cannot remove the last administrator.")
             self.users[username]["role"] = role
         if password is not None:
             self.users[username]["password_hash"] = auth.hash_password(password)
@@ -152,8 +152,8 @@ class UserStore:
 
     def delete(self, username: str) -> None:
         if username not in self.users:
-            raise UserError(f"No existe el usuario «{username}».")
+            raise UserError(f"User \u00ab{username}\u00bb does not exist.")
         if self.users[username]["role"] == "admin" and self._admins() == [username]:
-            raise UserError("No puedes borrar el último administrador.")
+            raise UserError("You cannot delete the last administrator.")
         del self.users[username]
         self._save()

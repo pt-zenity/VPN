@@ -1,16 +1,16 @@
-"""Instalación «llave en mano» de los servidores VPN.
+"""Turn-key installation of VPN servers.
 
-Reutiliza los conocidos instaladores de angristan (MIT), que además de instalar los
-paquetes configuran el servidor completo (PKI, server.conf, firewall/NAT, primer
-cliente) en muchas distribuciones:
+Reuses the well-known angristan installers (MIT), which in addition to installing
+packages set up the entire server (PKI, server.conf, firewall/NAT, first client)
+on many distributions:
 
 - OpenVPN:   https://github.com/angristan/openvpn-install   (openvpn-install.sh)
 - WireGuard: https://github.com/angristan/wireguard-install (wireguard-install.sh)
 
-NO incluimos su código en el repositorio: el panel **descarga** el script de una URL
-**fijada a un commit concreto** y **verifica su SHA-256** antes de ejecutarlo (cadena
-de suministro). Sin checksum configurado, no se ejecuta (fail-closed). En sandbox solo
-se simula (no descarga ni ejecuta).
+We do NOT include their code in the repository: the panel **downloads** the script
+from a URL **pinned to a specific commit** and **verifies its SHA-256** before
+executing it (supply chain). Without a configured checksum, it does not run
+(fail-closed). In sandbox mode it is only simulated (no download or execution).
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ REPOS = {
 
 
 class BootstrapError(Exception):
-    """Error de negocio en la instalación llave en mano."""
+    """Business error in turn-key installation."""
 
 
 def _source(backend: str, settings) -> tuple[str, str]:
@@ -36,27 +36,27 @@ def _source(backend: str, settings) -> tuple[str, str]:
         return settings.bootstrap_openvpn_url, settings.bootstrap_openvpn_sha256
     if backend == "wireguard":
         return settings.bootstrap_wireguard_url, settings.bootstrap_wireguard_sha256
-    raise BootstrapError(f"Backend no válido: «{backend}».")
+    raise BootstrapError(f"Invalid backend: «{backend}».")
 
 
 def fetch_and_verify(url: str, sha256_expected: str, dest: Path) -> Path:
-    """Descarga `url`, comprueba su SHA-256 y lo guarda en `dest` (modo 700)."""
+    """Downloads `url`, verifies its SHA-256 and saves it to `dest` (mode 700)."""
     if not url:
-        raise BootstrapError("No hay URL del script configurada.")
+        raise BootstrapError("No script URL configured.")
     if not sha256_expected:
-        raise BootstrapError("No hay SHA-256 configurado: no se ejecuta sin verificar.")
+        raise BootstrapError("No SHA-256 configured: will not execute without verification.")
     if not url.startswith(("https://", "file://")):
-        raise BootstrapError("La URL debe ser https://.")
+        raise BootstrapError("URL must use https://.")
     try:
-        with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310 (esquema validado)
+        with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310 (scheme validated)
             data = resp.read()
     except Exception as e:  # noqa: BLE001
-        raise BootstrapError(f"No se pudo descargar el script: {e}") from e
+        raise BootstrapError(f"Could not download the script: {e}") from e
     actual = hashlib.sha256(data).hexdigest()
     if not hmac.compare_digest(actual, sha256_expected.strip().lower()):
         raise BootstrapError(
-            "El SHA-256 del script descargado NO coincide con el configurado "
-            f"(esperado {sha256_expected[:12]}…, obtenido {actual[:12]}…). No se ejecuta."
+            "The SHA-256 of the downloaded script does NOT match the configured one "
+            f"(expected {sha256_expected[:12]}…, got {actual[:12]}…). Aborting."
         )
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(data)
@@ -65,16 +65,16 @@ def fetch_and_verify(url: str, sha256_expected: str, dest: Path) -> Path:
 
 
 def unattended_env(backend: str, settings) -> dict[str, str]:
-    """Variables para ejecutar el script en modo desatendido (best-effort, ajustable)."""
+    """Environment variables for running the script in unattended mode (best-effort, adjustable)."""
     if backend == "openvpn":
         return {
             "AUTO_INSTALL": "y", "APPROVE_INSTALL": "y", "APPROVE_IP": "y",
             "IPV6_SUPPORT": "n", "PORT_CHOICE": "1", "PROTOCOL_CHOICE": "1",
             "DNS": "1", "COMPRESSION_ENABLED": "n", "CUSTOMIZE_ENC": "n",
-            "CLIENT": "cliente1", "PASS": "1",
+            "CLIENT": "client1", "PASS": "1",
             "ENDPOINT": settings.openvpn_public_endpoint,
         }
-    return {"AUTO_INSTALL": "y"}  # wireguard-install autodetecta la mayoría
+    return {"AUTO_INSTALL": "y"}  # wireguard-install auto-detects most settings
 
 
 def plan(backend: str, settings) -> dict:
@@ -93,26 +93,26 @@ def run(backend: str, settings, sandbox: bool) -> dict:
     p = plan(backend, settings)
     if not (url and sha):
         raise BootstrapError(
-            "Instalación llave en mano no configurada: fija la URL (a un commit) y su "
-            "SHA-256 en VPNM_BOOTSTRAP_* para este backend."
+            "Turn-key installation not configured: set the URL (pinned to a commit) and its "
+            "SHA-256 in VPNM_BOOTSTRAP_* for this backend."
         )
     if sandbox:
         return {"installed": False, "simulated": True, "plan": p,
-                "detail": "Sandbox: se descargaría y verificaría el script, sin ejecutarlo."}
+                "detail": "Sandbox: the script would be downloaded and verified, but not executed."}
     if not settings.allow_install:
-        raise BootstrapError("Instalación deshabilitada. Activa VPNM_ALLOW_INSTALL=true.")
+        raise BootstrapError("Installation disabled. Set VPNM_ALLOW_INSTALL=true to enable.")
     if os.geteuid() != 0:
-        raise BootstrapError("La instalación requiere ejecutarse como root.")
+        raise BootstrapError("Installation requires running as root.")
 
     dest = Path(settings.bootstrap_dir) / f"{backend}-install.sh"
     fetch_and_verify(url, sha, dest)  # pragma: no cover - red + root
     env = {**os.environ, **unattended_env(backend, settings)}
-    try:  # pragma: no cover - requiere root
+    try:  # pragma: no cover - requires root
         r = subprocess.run(
             ["bash", str(dest)], env=env, capture_output=True, text=True, timeout=900, check=True
         )
     except subprocess.CalledProcessError as e:  # pragma: no cover
-        raise BootstrapError(f"El instalador falló: {e.stderr.strip() or e}") from e
+        raise BootstrapError(f"The installer failed: {e.stderr.strip() or e}") from e
     except (OSError, subprocess.TimeoutExpired) as e:  # pragma: no cover
-        raise BootstrapError(f"No se pudo ejecutar el instalador: {e}") from e
+        raise BootstrapError(f"Could not execute the installer: {e}") from e
     return {"installed": True, "simulated": False, "plan": p, "output": r.stdout[-3000:]}

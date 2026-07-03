@@ -1,10 +1,10 @@
-"""Entrega de configuraciones de cliente: guardar en el servidor o enviar por correo.
+"""Client configuration delivery: save to server or send by email.
 
-Seguridad:
-- Guardar: la ruta destino debe quedar DENTRO del directorio permitido
-  (`export_dir`) — evita escritura arbitraria y *path traversal*.
-- Correo: se valida la dirección; las credenciales SMTP vienen de configuración
-  (nunca hardcodeadas). Aviso: el correo no es un canal seguro para claves.
+Security:
+- Save: the destination path must remain INSIDE the allowed directory
+  (`export_dir`) — prevents arbitrary writes and *path traversal*.
+- Email: the address is validated; SMTP credentials come from configuration
+  (never hard-coded). Warning: email is not a secure channel for keys.
 """
 from __future__ import annotations
 
@@ -19,19 +19,19 @@ _SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,80}$")
 
 
 class DeliveryError(Exception):
-    """Error de negocio al entregar la configuración."""
+    """Business error when delivering a configuration."""
 
 
 def save_to_server(content: str, filename: str, dest: str, allowed_base: Path) -> Path:
-    """Guarda `content` como `filename` dentro de `dest`, que debe estar bajo `allowed_base`."""
+    """Saves `content` as `filename` inside `dest`, which must be under `allowed_base`."""
     if not _SAFE_NAME_RE.match(filename):
-        raise DeliveryError("Nombre de fichero no válido.")
+        raise DeliveryError("Invalid filename.")
     allowed_base = allowed_base.resolve()
-    # `dest` puede ser relativo (al base) o absoluto; en ambos casos debe caer dentro.
+    # `dest` may be relative (to base) or absolute; in both cases it must fall inside.
     target_dir = (allowed_base / dest).resolve() if not Path(dest).is_absolute() else Path(dest).resolve()
     if target_dir != allowed_base and allowed_base not in target_dir.parents:
         raise DeliveryError(
-            f"La ruta debe estar dentro del directorio permitido: {allowed_base}"
+            f"Path must be within the allowed directory: {allowed_base}"
         )
     target_dir.mkdir(parents=True, exist_ok=True)
     path = target_dir / filename
@@ -42,20 +42,20 @@ def save_to_server(content: str, filename: str, dest: str, allowed_base: Path) -
 def validate_email(addr: str) -> str:
     addr = (addr or "").strip()
     if not _EMAIL_RE.match(addr):
-        raise DeliveryError("Dirección de correo no válida.")
+        raise DeliveryError("Invalid email address.")
     return addr
 
 
 def send_email(content: str, filename: str, to_addr: str, settings, sandbox: bool) -> dict:
-    """Envía la config como adjunto. Sin SMTP configurado: simula en sandbox, error en prod."""
+    """Sends the config as an attachment. Without SMTP configured: simulates in sandbox, error in prod."""
     to_addr = validate_email(to_addr)
     msg = EmailMessage()
     msg["From"] = settings.smtp_from
     msg["To"] = to_addr
-    msg["Subject"] = f"Tu configuración VPN: {filename}"
+    msg["Subject"] = f"Your VPN configuration: {filename}"
     msg.set_content(
-        "Adjuntamos tu configuración para conectarte a la VPN.\n\n"
-        "Importante: trátala como una credencial; no la reenvíes."
+        "We have attached your configuration for connecting to the VPN.\n\n"
+        "Important: treat it like a credential; do not forward it."
     )
     msg.add_attachment(
         content.encode("utf-8"), maintype="application", subtype="octet-stream",
@@ -69,9 +69,9 @@ def send_email(content: str, filename: str, to_addr: str, settings, sandbox: boo
             eml = outbox / f"{filename}.{to_addr}.eml"
             eml.write_bytes(bytes(msg))
             return {"sent": True, "simulated": True, "to": to_addr}
-        raise DeliveryError("SMTP no configurado: define VPNM_SMTP_HOST para enviar correos.")
+        raise DeliveryError("SMTP not configured: set VPNM_SMTP_HOST to send emails.")
 
-    try:  # pragma: no cover - requiere servidor SMTP real
+    try:  # pragma: no cover - requires a real SMTP server
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as smtp:
             if settings.smtp_starttls:
                 smtp.starttls(context=ssl.create_default_context())
@@ -79,5 +79,5 @@ def send_email(content: str, filename: str, to_addr: str, settings, sandbox: boo
                 smtp.login(settings.smtp_user, settings.smtp_password)
             smtp.send_message(msg)
     except Exception as e:  # noqa: BLE001
-        raise DeliveryError(f"No se pudo enviar el correo: {e}") from e
+        raise DeliveryError(f"Could not send email: {e}") from e
     return {"sent": True, "simulated": False, "to": to_addr}

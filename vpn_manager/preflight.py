@@ -1,9 +1,9 @@
-"""Comprobaciones de seguridad / preparación para producción.
+"""Security / production-readiness checks.
 
-Revisa la configuración en marcha y avisa de ajustes inseguros (credenciales de
-desarrollo, clave de sesión efímera, cookies sin Secure tras HTTPS, instalación
-habilitada…). Pensado para que el administrador vea de un vistazo qué falta antes
-de exponer el panel.
+Reviews the current configuration and warns about insecure settings (development
+credentials, ephemeral session key, cookies without Secure behind HTTPS, installation
+enabled…). Designed so the administrator can see at a glance what needs attention
+before exposing the panel.
 """
 from __future__ import annotations
 
@@ -15,45 +15,45 @@ def checks(settings) -> list[dict]:
         out.append({"level": level, "message": message})
 
     if settings.sandbox:
-        add("info", "Modo sandbox: el panel trabaja con datos de demostración y NO toca el "
-                    "servidor VPN real.")
+        add("info", "Sandbox mode: the panel works with demo data and does NOT touch the "
+                    "real VPN server.")
     else:
-        add("ok", "Modo producción: gestionando el servidor VPN real.")
+        add("ok", "Production mode: managing the real VPN server.")
 
-    # Contraseña de administrador.
+    # Administrator password.
     if settings.admin_password_hash:
-        add("ok", "Contraseña de administrador configurada (hash).")
+        add("ok", "Administrator password configured (hash).")
     elif settings.sandbox:
-        add("warn", "Usando credenciales de desarrollo «admin/admin». Configura "
-                    "VPNM_ADMIN_PASSWORD_HASH (genera con «python -m vpn_manager.hashpw»).")
+        add("warn", "Using development credentials «admin/admin». Set "
+                    "VPNM_ADMIN_PASSWORD_HASH (generate with «python -m vpn_manager.hashpw»).")
 
-    # Clave de sesión.
+    # Session key.
     if settings.secret_key:
-        add("ok", "Clave de sesión persistente configurada.")
+        add("ok", "Persistent session key configured.")
     else:
-        add("warn", "Clave de sesión efímera: las sesiones se pierden al reiniciar. "
-                    "Fija VPNM_SECRET_KEY.")
+        add("warn", "Ephemeral session key: sessions are lost on restart. "
+                    "Set VPNM_SECRET_KEY.")
 
-    # Cookies seguras / HTTPS.
+    # Secure cookies / HTTPS.
     if settings.cookie_secure:
-        add("ok", "Cookies seguras (Secure + HSTS) activadas; sírvelo siempre tras HTTPS.")
+        add("ok", "Secure cookies (Secure + HSTS) enabled; always serve behind HTTPS.")
     elif settings.sandbox:
-        add("info", "Cookies sin «Secure» (aceptable en local). Activa VPNM_COOKIE_SECURE=true "
-                    "cuando lo sirvas tras HTTPS.")
+        add("info", "Cookies without «Secure» (acceptable locally). Enable VPNM_COOKIE_SECURE=true "
+                    "when serving behind HTTPS.")
     else:
-        add("warn", "Producción SIN cookies «Secure»: activa VPNM_COOKIE_SECURE=true y sírvelo "
-                    "tras HTTPS.")
+        add("warn", "Production WITHOUT «Secure» cookies: enable VPNM_COOKIE_SECURE=true and serve "
+                    "behind HTTPS.")
 
-    # Instalación de servicios.
+    # Service installation.
     if settings.allow_install:
-        add("warn", "Instalación de servicios habilitada (VPNM_ALLOW_INSTALL=true): el panel "
-                    "puede instalar paquetes como root. Déjalo en false salvo cuando lo uses.")
+        add("warn", "Service installation enabled (VPNM_ALLOW_INSTALL=true): the panel "
+                    "can install packages as root. Leave it false unless actively using it.")
 
     return out
 
 
 def summary_level(items: list[dict]) -> str:
-    """Peor nivel del conjunto: warn > info > ok."""
+    """Worst level in the set: warn > info > ok."""
     levels = {item["level"] for item in items}
     if "warn" in levels:
         return "warn"

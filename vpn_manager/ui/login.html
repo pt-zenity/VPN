@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VPN Manager — Entrar</title>
+<title>VPN Manager — Sign In</title>
 <style>
   :root{--bg:#fbfbfa;--panel:#fff;--ink:#1c1d21;--muted:#6b6f76;--faint:#9a9ea6;
     --line:#e2e3e6;--accent:#1f6f6b;--accent-soft:#eef4f3;--stop:#b3493f}
@@ -31,17 +31,17 @@
 <body>
   <form class="card" method="post" action="/login">
     <div class="brand">VPN Manager</div>
-    <h1>Entrar al panel</h1>
+    <h1>Sign in to the panel</h1>
     <p class="sub"><!--SUBTITLE--></p>
     <!--ERROR-->
     <!--CREDS-->
-    <label for="u">Usuario</label>
+    <label for="u">Username</label>
     <input id="u" name="username" type="text" autocomplete="username" autofocus required>
-    <label for="p">Contraseña</label>
+    <label for="p">Password</label>
     <input id="p" name="password" type="password" autocomplete="current-password" required>
     <!--/CREDS-->
     <!--CODE-->
-    <label for="c">Código de verificación</label>
+    <label for="c">Verification code</label>
     <input id="c" name="code" type="text" inputmode="numeric" autocomplete="one-time-code"
            pattern="[0-9 ]*" maxlength="10" autofocus required>
     <!--/CODE-->

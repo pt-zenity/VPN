@@ -96,7 +96,7 @@ def require_user(request: Request) -> str:
     """Dependencia: exige sesión iniciada y que el usuario siga existiendo."""
     user = request.session.get("user")
     if not user or not _users.exists(user):
-        raise HTTPException(status_code=401, detail="No autenticado")
+        raise HTTPException(status_code=401, detail="Not authenticated")
     return user
 
 
@@ -105,7 +105,7 @@ def require_perm(perm: str):
     def dep(request: Request) -> str:
         user = require_user(request)
         if not _users.has_perm(user, perm):
-            raise HTTPException(status_code=403, detail="No tienes permiso para esta acción.")
+            raise HTTPException(status_code=403, detail="You do not have permission for this action.")
         return user
     return dep
 
@@ -260,7 +260,7 @@ def login(
     ip = request.client.host if request.client else "?"
     if _throttle.is_blocked(ip):
         log.warning("login bloqueado por exceso de intentos desde %s", ip)
-        return HTMLResponse(_render_login("Demasiados intentos. Espera unos minutos.",
+        return HTMLResponse(_render_login("Too many attempts. Please wait a few minutes.",
                                           "code" if request.session.get("pending_2fa") else "login"),
                             status_code=429)
 
@@ -275,14 +275,14 @@ def login(
             return RedirectResponse("/", status_code=303)
         _throttle.record_failure(ip)
         log.warning("2FA incorrecto (usuario=%r) desde %s", pending[:32], ip)
-        return HTMLResponse(_render_login("Código de verificación incorrecto.", "code"),
+        return HTMLResponse(_render_login("Incorrect verification code.", "code"),
                             status_code=401)
 
     # Primer paso: usuario + contraseña.
     if not _users.verify(username, password):
         _throttle.record_failure(ip)
         log.warning("login fallido (usuario=%r) desde %s", username[:32], ip)
-        return HTMLResponse(_render_login("Usuario o contraseña incorrectos."), status_code=401)
+        return HTMLResponse(_render_login("Incorrect username or password."), status_code=401)
 
     if _users.totp_enabled(username):
         request.session.clear()
@@ -342,7 +342,7 @@ def me_2fa_setup(user: str = Depends(require_user)) -> dict:
 @app.post("/api/me/2fa/enable")
 def me_2fa_enable(body: TwoFACode, user: str = Depends(require_user)) -> dict:
     if not totp.verify(_users.totp_secret(user) or "", body.code):
-        raise HTTPException(status_code=422, detail="Código incorrecto. Vuelve a intentarlo.")
+        raise HTTPException(status_code=422, detail="Incorrect code. Please try again.")
     try:
         _users.enable_totp(user)
     except users.UserError as e:
@@ -354,9 +354,9 @@ def me_2fa_enable(body: TwoFACode, user: str = Depends(require_user)) -> dict:
 @app.post("/api/me/2fa/disable")
 def me_2fa_disable(body: TwoFACode, user: str = Depends(require_user)) -> dict:
     if not _users.totp_enabled(user):
-        raise HTTPException(status_code=422, detail="La verificación en dos pasos no está activa.")
+        raise HTTPException(status_code=422, detail="Two-step verification is not active.")
     if not totp.verify(_users.totp_secret(user) or "", body.code):
-        raise HTTPException(status_code=422, detail="Código incorrecto.")
+        raise HTTPException(status_code=422, detail="Incorrect code.")
     _users.disable_totp(user)
     log.info("2FA desactivado por %s", user)
     return {"totp_enabled": False}
@@ -410,7 +410,7 @@ def users_update(username: str, body: UpdateUser, admin: str = Depends(require_p
 @app.delete("/api/users/{username}")
 def users_delete(username: str, admin: str = Depends(require_perm("users:manage"))) -> dict:
     if username == admin:
-        raise HTTPException(status_code=422, detail="No puedes borrar tu propia cuenta.")
+        raise HTTPException(status_code=422, detail="You cannot delete your own account.")
     try:
         _users.delete(username)
     except users.UserError as e:
@@ -727,12 +727,12 @@ def _render_login(error: str = "", step: str = "login") -> str:
     if step == "code":
         # Paso del código: deja el bloque CODE, quita CREDS.
         html = re.sub(r"<!--CREDS-->.*?<!--/CREDS-->", "", html, flags=re.DOTALL)
-        html = html.replace("<!--SUBTITLE-->", "Introduce el código de tu app de autenticación.")
-        html = html.replace("<!--BUTTON-->", "Verificar")
+        html = html.replace("<!--SUBTITLE-->", "Enter the code from your authenticator app.")
+        html = html.replace("<!--BUTTON-->", "Verify")
     else:
         html = re.sub(r"<!--CODE-->.*?<!--/CODE-->", "", html, flags=re.DOTALL)
-        html = html.replace("<!--SUBTITLE-->", "Introduce tus credenciales para administrar la VPN.")
-        html = html.replace("<!--BUTTON-->", "Entrar")
+        html = html.replace("<!--SUBTITLE-->", "Enter your credentials to manage the VPN.")
+        html = html.replace("<!--BUTTON-->", "Sign in")
     return html
 
 

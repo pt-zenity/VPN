@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +8,7 @@
   :root{
     --bg:#f4f5f4; --panel:#ffffff; --ink:#1c1d21; --muted:#6b6f76; --faint:#9a9ea6;
     --line:#ecedef; --line-strong:#e2e3e6;
-    /* Color de marca según la VPN instalada (lo ajusta el JS). Por defecto OpenVPN. */
+    /* Brand color based on installed VPN (adjusted by JS). Default: OpenVPN. */
     --accent:#e07d22; --accent-soft:#fdf2e6;
     --sidebar:#1b2422; --sidebar-ink:#cfd8d4; --sidebar-active:#2a3a36;
     --ok:#3a8f54; --warn:#b07a1e; --stop:#b3493f; --radius:14px;
@@ -19,7 +19,7 @@
     -webkit-font-smoothing:antialiased;letter-spacing:-.005em}
   .app{display:flex;min-height:100vh}
 
-  /* ── Barra lateral ── */
+  /* ── Sidebar ── */
   .side{width:248px;flex:none;background:var(--sidebar);color:var(--sidebar-ink);
     display:flex;flex-direction:column;padding:22px 16px;position:sticky;top:0;height:100vh}
   .side .brand{color:#fff;font-size:16px;font-weight:600;padding:4px 10px 16px;letter-spacing:.01em}
@@ -58,7 +58,7 @@
     font:inherit;font-size:13.5px;font-weight:500;padding:9px;border-radius:10px;cursor:pointer}
   .side .logout:hover{background:var(--sidebar-active);color:#fff}
 
-  /* ── Contenido ── */
+  /* ── Content ── */
   main{flex:1;min-width:0;padding:34px 40px 60px}
   .wrap{max-width:1180px;margin:0 auto}
   h1{font-size:25px;font-weight:600;letter-spacing:-.02em}
@@ -128,7 +128,7 @@
   .allcfg summary::-webkit-details-marker{display:none}
   .allcfg pre{margin:0;padding:2px 18px 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
     font-size:12.5px;line-height:1.7;color:#3a3f45;white-space:pre-wrap;word-break:break-word}
-  /* Formulario de edición de la configuración */
+  /* Configuration edit form */
   .cfgform{padding:6px 0}
   .cfgrow{display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start;padding:13px 20px;border-top:1px solid var(--line)}
   .cfgrow:first-child{border-top:0}
@@ -162,23 +162,23 @@
     <div class="brand">VPN <span>Manager</span></div>
     <div class="backend-badge">
       <span class="logo" id="backend-logo"></span>
-      <div><div class="bk-name" id="backend-name">—</div><div class="bk-sub">servidor VPN activo</div></div>
+      <div><div class="bk-name" id="backend-name">—</div><div class="bk-sub">active VPN server</div></div>
     </div>
     <div class="svc-chip">
       <span id="svc-dot" class="dot idle"></span>
-      <div><div class="t" id="svc-title">Comprobando…</div><div class="s" id="svc-sub"></div></div>
+      <div><div class="t" id="svc-title">Checking…</div><div class="s" id="svc-sub"></div></div>
     </div>
     <nav id="nav">
-      <a data-page="resumen" onclick="showPage('resumen')">Resumen</a>
-      <a data-page="servicio" onclick="showPage('servicio')">Servicio</a>
-      <a data-page="servidor" onclick="showPage('servidor')">Configuración</a>
-      <a data-page="clientes" onclick="showPage('clientes')">Dispositivos <span class="n" id="nav-clients">·</span></a>
-      <a data-page="conexiones" onclick="showPage('conexiones')">Conexiones <span class="n" id="nav-conns">·</span></a>
-      <a data-page="registros" onclick="showPage('registros')">Registros</a>
-      <a data-page="actividad" id="nav-actividad" onclick="showPage('actividad')" style="display:none">Actividad</a>
-      <a data-page="usuarios" id="nav-usuarios" onclick="showPage('usuarios')" style="display:none">Usuarios</a>
-      <a data-page="sistema" onclick="showPage('sistema')">Sistema</a>
-      <a data-page="cuenta" onclick="showPage('cuenta')">Mi cuenta</a>
+      <a data-page="overview" onclick="showPage('overview')">Overview</a>
+      <a data-page="service" onclick="showPage('service')">Service</a>
+      <a data-page="server" onclick="showPage('server')">Configuration</a>
+      <a data-page="devices" onclick="showPage('devices')">Devices <span class="n" id="nav-clients">·</span></a>
+      <a data-page="connections" onclick="showPage('connections')">Connections <span class="n" id="nav-conns">·</span></a>
+      <a data-page="logs" onclick="showPage('logs')">Logs</a>
+      <a data-page="activity" id="nav-activity" onclick="showPage('activity')" style="display:none">Activity</a>
+      <a data-page="users" id="nav-users" onclick="showPage('users')" style="display:none">Users</a>
+      <a data-page="system" onclick="showPage('system')">System</a>
+      <a data-page="account" onclick="showPage('account')">My account</a>
     </nav>
     <div class="switch" id="backend-switch">
       <button class="on" data-b="openvpn" onclick="setBackend('openvpn')">OpenVPN</button>
@@ -186,121 +186,121 @@
     </div>
     <div class="foot">
       <div class="me-chip" id="me-chip" style="display:none"><span class="me-u" id="me-user">—</span><span class="me-r" id="me-role"></span></div>
-      <form method="post" action="/logout"><button class="logout" type="submit">Cerrar sesión</button></form>
+      <form method="post" action="/logout"><button class="logout" type="submit">Sign out</button></form>
     </div>
   </aside>
 
   <main>
    <div class="wrap">
-    <h1>Panel de la VPN</h1>
-    <p class="lead">Administra tu servidor VPN: el estado del servicio, quién tiene acceso, quién está conectado y los registros. Todo lo que harías por línea de comandos, desde aquí.</p>
+    <h1>VPN Panel</h1>
+    <p class="lead">Manage your VPN server: service status, who has access, who is connected and the logs. Everything you would do on the command line, from here.</p>
 
-    <section id="resumen" class="page">
-      <div class="sechead"><div><h2>Resumen</h2></div></div>
+    <section id="overview" class="page">
+      <div class="sechead"><div><h2>Overview</h2></div></div>
       <div class="stats">
-        <div class="stat"><div class="k">Servicio</div><div class="v" id="st-svc">—</div></div>
-        <div class="stat"><div class="k">Accesos activos</div><div class="v" id="st-active">—</div></div>
-        <div class="stat"><div class="k">Conectados ahora</div><div class="v" id="st-conns">—</div></div>
-        <div class="stat"><div class="k">Caducados / retirados</div><div class="v" id="st-other">—</div></div>
+        <div class="stat"><div class="k">Service</div><div class="v" id="st-svc">—</div></div>
+        <div class="stat"><div class="k">Active access</div><div class="v" id="st-active">—</div></div>
+        <div class="stat"><div class="k">Connected now</div><div class="v" id="st-conns">—</div></div>
+        <div class="stat"><div class="k">Expired / revoked</div><div class="v" id="st-other">—</div></div>
       </div>
     </section>
 
-    <section id="servicio" class="page">
-      <div class="sechead"><div><h2>Servicio</h2><p class="hint" id="svc-hint">Controla el servidor. «Recargar» relee la configuración sin cortar a los conectados; «Reiniciar» los desconecta un instante.</p></div></div>
+    <section id="service" class="page">
+      <div class="sechead"><div><h2>Service</h2><p class="hint" id="svc-hint">Control the server. “Reload” re-reads the configuration without disconnecting users; “Restart” disconnects them briefly.</p></div></div>
       <div class="panel"><div class="controls">
         <span class="state" id="svc-state"><span class="dot idle"></span>—</span>
         <div class="grp">
-          <button class="btn" onclick="svcAction('reload')">Recargar</button>
-          <button class="btn" onclick="svcAction('restart')">Reiniciar</button>
-          <button class="btn danger" id="btn-toggle" onclick="toggleService()">Parar</button>
+          <button class="btn" onclick="svcAction('reload')">Reload</button>
+          <button class="btn" onclick="svcAction('restart')">Restart</button>
+          <button class="btn danger" id="btn-toggle" onclick="toggleService()">Stop</button>
         </div>
       </div></div>
     </section>
 
-    <section id="servidor" class="page">
+    <section id="server" class="page">
       <div class="sechead">
-        <div><h2>Configuración del servidor</h2><p class="hint" id="cfg-hint">Parámetros con los que está funcionando el servidor. Puedes editarlos.</p></div>
-        <button class="btn" id="cfg-edit-btn" onclick="editServer()">Editar configuración</button>
+        <div><h2>Server configuration</h2><p class="hint" id="cfg-hint">Parameters the server is running with. You can edit them.</p></div>
+        <button class="btn" id="cfg-edit-btn" onclick="editServer()">Edit configuration</button>
       </div>
-      <div class="panel"><div id="server-info"><div class="empty">Cargando…</div></div></div>
+      <div class="panel"><div id="server-info"><div class="empty">Loading…</div></div></div>
     </section>
 
-    <section id="clientes" class="page">
+    <section id="devices" class="page">
       <div class="sechead">
-        <div><h2>Dispositivos con acceso</h2><p class="hint">Cada dispositivo (portátil, móvil, tablet…) tiene un certificado. Aquí ves si su acceso está activo, caducado o retirado, y puedes darlo de alta, renovarlo o retirarlo.</p></div>
-        <button class="btn primary" id="add-btn" onclick="toggleForm(true)">Añadir dispositivo</button>
+        <div><h2>Devices with access</h2><p class="hint">Each device (laptop, phone, tablet…) has a certificate. Here you can see if its access is active, expired or revoked, and you can add, renew or revoke it.</p></div>
+        <button class="btn primary" id="add-btn" onclick="toggleForm(true)">Add device</button>
       </div>
       <div class="panel">
         <div class="addform" id="add-form">
-          <input id="add-name" type="text" placeholder="Nombre, p. ej. portatil-ana o movil-luis" maxlength="64" autocomplete="off" onkeydown="if(event.key==='Enter')createClient()">
-          <button class="btn primary" onclick="createClient()">Crear acceso</button>
-          <button class="btn" onclick="toggleForm(false)">Cancelar</button>
+          <input id="add-name" type="text" placeholder="Name, e.g. laptop-alice or phone-bob" maxlength="64" autocomplete="off" onkeydown="if(event.key==='Enter')createClient()">
+          <button class="btn primary" onclick="createClient()">Create access</button>
+          <button class="btn" onclick="toggleForm(false)">Cancel</button>
         </div>
         <div class="formhint" id="add-hint" style="display:none"></div>
-        <div id="clients"><div class="empty">Cargando…</div></div>
+        <div id="clients"><div class="empty">Loading…</div></div>
       </div>
     </section>
 
-    <section id="conexiones" class="page">
-      <div class="sechead"><div><h2>Conexiones activas</h2><p class="hint">Personas que están usando la VPN en este instante.</p></div></div>
-      <div class="panel" id="conns"><div class="empty">Cargando…</div></div>
+    <section id="connections" class="page">
+      <div class="sechead"><div><h2>Active connections</h2><p class="hint">Users currently connected to the VPN.</p></div></div>
+      <div class="panel" id="conns"><div class="empty">Loading…</div></div>
     </section>
 
-    <section id="registros" class="page">
+    <section id="logs" class="page">
       <div class="sechead">
-        <div><h2>Registros del servidor</h2><p class="hint" id="logs-hint">Últimas líneas del registro del servidor.</p></div>
-        <button class="btn" onclick="loadLogs()">Actualizar</button>
+        <div><h2>Server logs</h2><p class="hint" id="logs-hint">Last lines of the server log.</p></div>
+        <button class="btn" onclick="loadLogs()">Refresh</button>
       </div>
-      <div class="panel"><pre class="logbox" id="logs">Cargando…</pre></div>
+      <div class="panel"><pre class="logbox" id="logs">Loading…</pre></div>
     </section>
 
-    <section id="usuarios" class="page">
+    <section id="users-section" class="page">
       <div class="sechead">
-        <div><h2>Usuarios del panel</h2><p class="hint">Quién puede entrar al panel y con qué permisos. <b>Administrador</b>: todo. <b>Operador</b>: gestiona dispositivos y el servicio. <b>Solo lectura</b>: solo consulta.</p></div>
-        <button class="btn primary" id="user-add-btn" onclick="toggleUserForm(true)">Añadir usuario</button>
+        <div><h2>Panel users</h2><p class="hint">Who can access the panel and with what permissions. <b>Administrator</b>: full access. <b>Operator</b>: manages devices and the service. <b>Read only</b>: view only.</p></div>
+        <button class="btn primary" id="user-add-btn" onclick="toggleUserForm(true)">Add user</button>
       </div>
       <div class="panel">
         <div class="addform" id="user-form">
-          <input id="u-name" type="text" placeholder="Usuario (p. ej. ana)" maxlength="32" autocomplete="off">
-          <input id="u-pass" type="password" placeholder="Contraseña (mín. 8)" maxlength="256" autocomplete="new-password">
+          <input id="u-name" type="text" placeholder="Username (e.g. alice)" maxlength="32" autocomplete="off">
+          <input id="u-pass" type="password" placeholder="Password (min. 8)" maxlength="256" autocomplete="new-password">
           <select id="u-role" style="font:inherit;font-size:15px;padding:9px 12px;border:1px solid var(--line-strong);border-radius:10px;background:#fff"></select>
-          <button class="btn primary" onclick="createUser()">Crear</button>
-          <button class="btn" onclick="toggleUserForm(false)">Cancelar</button>
+          <button class="btn primary" onclick="createUser()">Create</button>
+          <button class="btn" onclick="toggleUserForm(false)">Cancel</button>
         </div>
         <div class="formhint" id="u-hint" style="display:none"></div>
-        <div id="users"><div class="empty">Cargando…</div></div>
+        <div id="users"><div class="empty">Loading…</div></div>
       </div>
     </section>
 
-    <section id="actividad" class="page">
+    <section id="activity" class="page">
       <div class="sechead">
-        <div><h2>Actividad</h2><p class="hint">Registro de acciones del panel: inicios de sesión, altas y bajas de dispositivos, cambios de configuración y de usuarios, instalaciones…</p></div>
+        <div><h2>Activity</h2><p class="hint">Log of panel actions: logins, device additions and removals, configuration and user changes, installations…</p></div>
         <div style="display:flex;gap:8px;align-items:center">
-          <input id="audit-q" type="text" placeholder="Buscar (usuario, acción…)" oninput="auditFilter()"
+          <input id="audit-q" type="text" placeholder="Search (user, action…)" oninput="auditFilter()"
             style="font:inherit;font-size:14px;padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;width:220px">
           <select id="audit-level" onchange="loadAudit()" style="font:inherit;font-size:14px;padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;background:#fff">
-            <option value="">Todos</option><option value="INFO">Info</option><option value="WARNING">Avisos</option>
+            <option value="">All</option><option value="INFO">Info</option><option value="WARNING">Warnings</option>
           </select>
-          <button class="btn" onclick="loadAudit()">Actualizar</button>
+          <button class="btn" onclick="loadAudit()">Refresh</button>
         </div>
       </div>
-      <div class="panel" id="audit"><div class="empty">Cargando…</div></div>
+      <div class="panel" id="audit"><div class="empty">Loading…</div></div>
     </section>
 
-    <section id="sistema" class="page">
-      <div class="sechead"><div><h2>Sistema</h2><p class="hint">Sistema operativo detectado y servicios VPN instalados. El panel puede instalar los que falten.</p></div></div>
+    <section id="system" class="page">
+      <div class="sechead"><div><h2>System</h2><p class="hint">Detected operating system and installed VPN services. The panel can install any that are missing.</p></div></div>
       <div class="stats" style="margin-bottom:16px">
-        <div class="stat"><div class="k">Distribución</div><div class="v" id="sys-distro" style="font-size:18px">—</div></div>
-        <div class="stat"><div class="k">Gestor de paquetes</div><div class="v" id="sys-pm" style="font-size:18px">—</div></div>
-        <div class="stat"><div class="k">Permisos</div><div class="v" id="sys-root" style="font-size:18px">—</div></div>
+        <div class="stat"><div class="k">Distribution</div><div class="v" id="sys-distro" style="font-size:18px">—</div></div>
+        <div class="stat"><div class="k">Package manager</div><div class="v" id="sys-pm" style="font-size:18px">—</div></div>
+        <div class="stat"><div class="k">Permissions</div><div class="v" id="sys-root" style="font-size:18px">—</div></div>
       </div>
-      <div class="panel" id="sys-services"><div class="empty">Cargando…</div></div>
+      <div class="panel" id="sys-services"><div class="empty">Loading…</div></div>
       <div id="sys-preflight"></div>
     </section>
 
-    <section id="cuenta" class="page">
-      <div class="sechead"><div><h2>Mi cuenta</h2><p class="hint">Tu usuario y la verificación en dos pasos (2FA), que añade un código de un solo uso al iniciar sesión.</p></div></div>
-      <div class="panel" id="account"><div class="empty">Cargando…</div></div>
+    <section id="account-section" class="page">
+      <div class="sechead"><div><h2>My account</h2><p class="hint">Your user account and two-factor authentication (2FA), which adds a one-time code to the login process.</p></div></div>
+      <div class="panel" id="account"><div class="empty">Loading…</div></div>
     </section>
    </div>
   </main>
@@ -310,13 +310,13 @@
 <script>
 const esc = s => (s??'').toString().replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const fmtBytes = b => { if(!b) return '0 B'; const u=['B','KB','MB','GB','TB']; let i=0; while(b>=1024&&i<u.length-1){b/=1024;i++;} return b.toFixed(i?1:0)+' '+u[i]; };
-const fmtDate = s => s ? new Date(s).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}) : '—';
-const since = s => { if(!s) return '—'; const m=Math.max(0,Math.round((Date.now()-new Date(s))/60000)); if(m<60) return 'hace '+m+' min'; const h=Math.floor(m/60); if(h<24) return 'hace '+h+' h '+(m%60)+' min'; return 'hace '+Math.floor(h/24)+' días'; };
-const CLIENT_STATE = { valid:{cls:'s-ok',dot:'ok',label:'Acceso activo'}, revoked:{cls:'s-stop',dot:'stop',label:'Acceso retirado'}, expired:{cls:'s-warn',dot:'warn',label:'Caducado'} };
+const fmtDate = s => s ? new Date(s).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '—';
+const since = s => { if(!s) return '—'; const m=Math.max(0,Math.round((Date.now()-new Date(s))/60000)); if(m<60) return m+' min ago'; const h=Math.floor(m/60); if(h<24) return h+'h '+(m%60)+'min ago'; return Math.floor(h/24)+' days ago'; };
+const CLIENT_STATE = { valid:{cls:'s-ok',dot:'ok',label:'Access active'}, revoked:{cls:'s-stop',dot:'stop',label:'Access revoked'}, expired:{cls:'s-warn',dot:'warn',label:'Expired'} };
 let _serviceActive = true;
 
-// El logo de cada protocolo se sirve desde /assets/<backend>.svg (coloca ahí los
-// logos OFICIALES; se incluyen placeholders neutros). El color de marca tiñe el resto.
+// The logo for each protocol is served from /assets/<backend>.svg (place
+// official logos there; neutral placeholders are included). Brand colour tints the rest.
 const BACKENDS = {
   openvpn:   { name:'OpenVPN',   accent:'#e07d22', soft:'#fdf2e6' },
   wireguard: { name:'WireGuard', accent:'#88171a', soft:'#fbecec' },
@@ -331,11 +331,11 @@ function applyBackend(name){
   document.getElementById('backend-name').textContent = b.name;
   document.title = 'VPN Manager — ' + b.name;
   const sh = document.getElementById('svc-hint');
-  if(sh) sh.textContent = `Controla el servidor ${b.name}. «Recargar» relee la configuración sin cortar a los conectados; «Reiniciar» los desconecta un instante.`;
+  if(sh) sh.textContent = `Control the ${b.name} server. "Reload" re-reads the configuration without disconnecting users; "Restart" disconnects them briefly.`;
   const ch = document.getElementById('cfg-hint');
-  if(ch) ch.textContent = `Parámetros con los que está funcionando el servidor ${b.name}.` + (name==='openvpn' ? ' Puedes editarlos.' : '');
+  if(ch) ch.textContent = `Parameters the ${b.name} server is running with.` + (name==='openvpn' ? ' You can edit them.' : '');
   const lh = document.getElementById('logs-hint');
-  if(lh) lh.textContent = `Últimas líneas del registro de ${b.name}.`;
+  if(lh) lh.textContent = `Last lines of the ${b.name} log.`;
 }
 
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
@@ -354,7 +354,7 @@ async function load(){
     renderConns(cn);
     renderStats(st, cl, cn);
   }catch(e){
-    document.getElementById('svc-title').textContent='Sin conexión con el panel';
+    document.getElementById('svc-title').textContent='No connection to panel';
     document.getElementById('svc-dot').className='dot warn';
   }
 }
@@ -364,13 +364,13 @@ function renderService(st){
   _serviceActive = !!st.active;
   const dot=document.getElementById('svc-dot'), title=document.getElementById('svc-title'), sub=document.getElementById('svc-sub');
   dot.className='dot '+(st.active?'ok':'stop');
-  title.textContent = st.active?'VPN funcionando':'VPN detenida';
-  sub.textContent = st.detail==='sandbox' ? 'modo de prueba' : (st.active?'':'nadie puede conectarse');
+  title.textContent = st.active?'VPN running':'VPN stopped';
+  sub.textContent = st.detail==='sandbox' ? 'test mode' : (st.active?'':'no one can connect');
   const s=document.getElementById('svc-state');
   s.className='state '+(st.active?'s-ok':'s-stop');
-  s.innerHTML=`<span class="dot ${st.active?'ok':'stop'}"></span>${st.active?'Servicio activo':'Servicio detenido'}`;
+  s.innerHTML=`<span class="dot ${st.active?'ok':'stop'}"></span>${st.active?'Service running':'Service stopped'}`;
   const tg=document.getElementById('btn-toggle');
-  tg.textContent = st.active?'Parar':'Arrancar';
+  tg.textContent = st.active?'Stop':'Start';
   tg.classList.toggle('danger', st.active);
   tg.classList.toggle('primary', !st.active);
   const grp=document.querySelector('#servicio .grp'); if(grp) grp.style.display = can('service:control') ? '' : 'none';
@@ -378,32 +378,32 @@ function renderService(st){
 
 function renderServer(sv){
   _serverInfo = sv;
-  if(_editingServer) return;  // no pisar el formulario mientras se edita
+  if(_editingServer) return;  // don't overwrite the form while editing
   const item=(k,v,mono)=> v ? `<div class="srv-item"><div class="k">${k}</div><div class="v${mono?' mono':''}">${v}</div></div>` : '';
   const tags=arr=> (arr&&arr.length)? arr.map(x=>`<span class="tag">${esc(x)}</span>`).join('') : '';
   const ciphers = sv.cipher ? sv.cipher.split(':').map(c=>`<span class="tag">${esc(c)}</span>`).join('') : '';
   const cells = [
-    item('Endpoint público', sv.public_endpoint?esc(sv.public_endpoint):'', true),
-    item('Puerto', sv.port?esc(sv.port):'', true),
-    item('Protocolo', sv.proto?esc(sv.proto).toUpperCase():''),
-    item('Dispositivo', sv.device?esc(sv.device):'', true),
-    item('Rango de IPs (VPN)', sv.subnet?esc(sv.subnet):'', true),
-    item('Cifrados de datos', ciphers),
-    item('Autenticación (HMAC)', sv.auth?esc(sv.auth):''),
-    item('TLS mínimo', sv.tls_version?esc(sv.tls_version):''),
-    item('Máx. dispositivos', sv.max_clients?esc(sv.max_clients):''),
-    item('DNS para clientes', tags(sv.dns_servers)),
-    item('Rutas empujadas', tags(sv.routes)),
-    item('Lista de revocación (CRL)', sv.crl_enabled?'<span style="color:var(--ok)">Activada</span>':'<span style="color:var(--warn)">Desactivada</span>'),
+    item('Public endpoint', sv.public_endpoint?esc(sv.public_endpoint):'', true),
+    item('Port', sv.port?esc(sv.port):'', true),
+    item('Protocol', sv.proto?esc(sv.proto).toUpperCase():''),
+    item('Device', sv.device?esc(sv.device):'', true),
+    item('IP range (VPN)', sv.subnet?esc(sv.subnet):'', true),
+    item('Data ciphers', ciphers),
+    item('Authentication (HMAC)', sv.auth?esc(sv.auth):''),
+    item('Minimum TLS', sv.tls_version?esc(sv.tls_version):''),
+    item('Max. devices', sv.max_clients?esc(sv.max_clients):''),
+    item('Client DNS', tags(sv.dns_servers)),
+    item('Pushed routes', tags(sv.routes)),
+    item('Revocation list (CRL)', sv.crl_enabled?'<span style="color:var(--ok)">Enabled</span>':'<span style="color:var(--warn)">Disabled</span>'),
   ].filter(Boolean);
-  // Completar la última fila (3 columnas) con celdas vacías para no dejar huecos.
+  // Pad the last row (3 columns) with empty cells to avoid gaps.
   while(cells.length % 3 !== 0) cells.push('<div class="srv-item"></div>');
   const grid = cells.join('');
   const all = (sv.directives&&sv.directives.length)
-    ? `<details class="allcfg"><summary>Ver toda la configuración (${sv.directives.length} directivas)</summary>
+    ? `<details class="allcfg"><summary>View full configuration (${sv.directives.length} directives)</summary>
        <pre>${sv.directives.map(d=>esc(d.key+(d.value?' '+d.value:''))).join('\n')}</pre></details>` : '';
   document.getElementById('server-info').innerHTML =
-    (grid? `<div class="srvgrid">${grid}</div>`:'<div class="empty">No se encontró la configuración del servidor.</div>') + all;
+    (grid? `<div class="srvgrid">${grid}</div>`:'<div class="empty">Server configuration not found.</div>') + all;
 }
 
 let _serverInfo = null;
@@ -417,24 +417,24 @@ function showPage(id){
   document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('active', a.dataset.page===id));
   document.querySelector('main').scrollTop = 0;
   window.scrollTo(0,0);
-  if(id==='usuarios') loadUsers();
-  if(id==='sistema') loadSystem();
-  if(id==='actividad') loadAudit();
-  if(id==='cuenta') loadAccount();
+  if(id==='users') loadUsers();
+  if(id==='system') loadSystem();
+  if(id==='activity') loadAudit();
+  if(id==='account') loadAccount();
 }
 
-// ── Mi cuenta / 2FA ──
+// ── My account / 2FA ──
 function loadAccount(){
   const on = !!_me.totp_enabled;
   document.getElementById('account').innerHTML = `
     <div class="row"><div><div class="name">${esc(_me.user||'')}</div><div class="meta">${esc(_me.role_label||'')}</div></div></div>
     <div class="row"><div>
-        <div class="name">Verificación en dos pasos (2FA)</div>
-        <div class="meta">${on?'Activada — se te pide un código al entrar.':'Desactivada — añade un código de un solo uso al iniciar sesión.'}</div>
+        <div class="name">Two-factor authentication (2FA)</div>
+        <div class="meta">${on?'Enabled — you will be asked for a code when signing in.':'Disabled — adds a one-time code to the sign-in process.'}</div>
         <div id="twofa-area"></div>
       </div>
-      <div class="right"><span class="state ${on?'s-ok':'s-warn'}"><span class="dot ${on?'ok':'warn'}"></span>${on?'Activada':'Desactivada'}</span>
-        ${on?`<button class="act danger" onclick="disable2fa()">Desactivar</button>`:`<button class="act" onclick="setup2fa()">Activar</button>`}</div>
+      <div class="right"><span class="state ${on?'s-ok':'s-warn'}"><span class="dot ${on?'ok':'warn'}"></span>${on?'Enabled':'Disabled'}</span>
+        ${on?`<button class="act danger" onclick="disable2fa()">Disable</button>`:`<button class="act" onclick="setup2fa()">Enable</button>`}</div>
     </div>`;
 }
 async function setup2fa(){
@@ -444,36 +444,36 @@ async function setup2fa(){
       <div style="margin-top:12px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
         <div class="qrbox">${d.qr}</div>
         <div style="max-width:360px">
-          <p class="meta">1) Escanea el QR con tu app (Google Authenticator, Aegis…) o introduce la clave manualmente:</p>
+          <p class="meta">1) Scan the QR with your app (Google Authenticator, Aegis…) or enter the key manually:</p>
           <p class="mono" style="font-size:12px;word-break:break-all;color:var(--muted)">${esc(d.secret)}</p>
-          <p class="meta">2) Escribe el código de 6 dígitos que muestra la app para confirmar:</p>
+          <p class="meta">2) Enter the 6-digit code shown by the app to confirm:</p>
           <div style="display:flex;gap:8px;margin-top:6px">
             <input id="twofa-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
               style="font:inherit;padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;width:120px">
-            <button class="btn primary" onclick="enable2fa()">Activar</button>
+            <button class="btn primary" onclick="enable2fa()">Enable</button>
           </div>
         </div>
       </div>`;
-  }catch(e){ toast('No se pudo iniciar la configuración.'); }
+  }catch(e){ toast('Could not start 2FA setup.'); }
 }
 async function enable2fa(){
   const code = (document.getElementById('twofa-code').value||'').trim();
   try{
     const r = await fetch('/api/me/2fa/enable',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
     const d = await r.json().catch(()=>({}));
-    if(!r.ok){ toast(d.detail||'No se pudo activar.'); return; }
-    _me.totp_enabled = true; toast('Verificación en dos pasos activada ✓'); loadAccount();
-  }catch(e){ toast('No se pudo conectar.'); }
+    if(!r.ok){ toast(d.detail||'Could not enable.'); return; }
+    _me.totp_enabled = true; toast('Two-factor authentication enabled ✓'); loadAccount();
+  }catch(e){ toast('Could not connect.'); }
 }
 async function disable2fa(){
-  const code = prompt('Para desactivar la 2FA, introduce un código actual de tu app:','');
+  const code = prompt('To disable 2FA, enter a current code from your app:','');
   if(!code) return;
   try{
     const r = await fetch('/api/me/2fa/disable',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code.trim()})});
     const d = await r.json().catch(()=>({}));
-    if(!r.ok){ toast(d.detail||'No se pudo desactivar.'); return; }
-    _me.totp_enabled = false; toast('Verificación en dos pasos desactivada ✓'); loadAccount();
-  }catch(e){ toast('No se pudo conectar.'); }
+    if(!r.ok){ toast(d.detail||'Could not disable.'); return; }
+    _me.totp_enabled = false; toast('Two-factor authentication disabled ✓'); loadAccount();
+  }catch(e){ toast('Could not connect.'); }
 }
 
 let _auditTimer=null;
@@ -485,23 +485,23 @@ async function loadAudit(){
     const lvl = (document.getElementById('audit-level')||{}).value||'';
     const d = await fetch(`/api/audit?limit=300&q=${q}&level=${lvl}`).then(r=>r.json());
     const box = document.getElementById('audit');
-    if(!d.entries || !d.entries.length){ box.innerHTML='<div class="empty">Sin resultados para el filtro.</div>'; return; }
+    if(!d.entries || !d.entries.length){ box.innerHTML='<div class="empty">No results for the current filter.</div>'; return; }
     box.innerHTML = d.entries.map(e=>{
       const warn = e.level && e.level!=='INFO';
-      const t = e.ts ? new Date(e.ts).toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '';
+      const t = e.ts ? new Date(e.ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '';
       return `<div class="row"><div><div class="name" style="font-weight:500">${esc(e.message)}</div></div>
         <div class="right"><span class="sub">${esc(t)}</span>${warn?`<span class="state s-warn"><span class="dot warn"></span>${esc(e.level)}</span>`:''}</div></div>`;
     }).join('');
-  }catch(e){ document.getElementById('audit').innerHTML='<div class="err">No se pudo cargar la actividad.</div>'; }
+  }catch(e){ document.getElementById('audit').innerHTML='<div class="err">Could not load activity.</div>'; }
 }
 
-// ── Sistema / instalación ──
+// ── System / installation ──
 async function loadSystem(){
   try{
     const s = await fetch('/api/system').then(r=>r.json());
     document.getElementById('sys-distro').textContent = (s.distro&&s.distro.name) || 'Linux';
-    document.getElementById('sys-pm').textContent = s.supported ? (s.package_manager||'—') : 'no compatible';
-    document.getElementById('sys-root').textContent = s.is_root ? 'root' : 'sin privilegios';
+    document.getElementById('sys-pm').textContent = s.supported ? (s.package_manager||'—') : 'not supported';
+    document.getElementById('sys-root').textContent = s.is_root ? 'root' : 'no privileges';
     const svc = [
       {k:'openvpn', label:'OpenVPN', sub:'+ easy-rsa'},
       {k:'wireguard', label:'WireGuard', sub:'wireguard-tools'},
@@ -511,14 +511,14 @@ async function loadSystem(){
       const canInstall = can('system:install') && !inst;
       let btn = '';
       if(canInstall){
-        const pkg = s.supported ? `<button class="btn" onclick="installService('${x.k}')">Instalar paquetes</button>` : '<span class="sub">distro no compatible</span>';
-        btn = `${pkg}<button class="btn primary" onclick="bootstrapService('${x.k}')">Instalación completa</button>`;
+        const pkg = s.supported ? `<button class="btn" onclick="installService('${x.k}')">Install packages</button>` : '<span class="sub">distro not supported</span>';
+        btn = `${pkg}<button class="btn primary" onclick="bootstrapService('${x.k}')">Full installation</button>`;
       }
       return `<div class="row"><div><div class="name">${x.label}</div><div class="meta">${x.sub}</div></div>
-        <div class="right"><span class="state ${inst?'s-ok':'s-warn'}"><span class="dot ${inst?'ok':'warn'}"></span>${inst?'Instalado':'No instalado'}</span></div>
+        <div class="right"><span class="state ${inst?'s-ok':'s-warn'}"><span class="dot ${inst?'ok':'warn'}"></span>${inst?'Installed':'Not installed'}</span></div>
         ${btn?`<div style="margin-left:16px;display:flex;gap:8px">${btn}</div>`:''}</div>`;
     }).join('');
-  }catch(e){ document.getElementById('sys-services').innerHTML='<div class="err">No se pudo leer el sistema.</div>'; }
+  }catch(e){ document.getElementById('sys-services').innerHTML='<div class="err">Could not read system info.</div>'; }
   loadPreflight();
 }
 async function loadPreflight(){
@@ -529,43 +529,43 @@ async function loadPreflight(){
     const dot = {ok:'ok', info:'idle', warn:'warn'};
     const rows = (d.checks||[]).map(c=>`<div class="row"><div><div class="name" style="font-weight:500">${esc(c.message)}</div></div>
       <div class="right"><span class="dot ${dot[c.level]||'idle'}"></span></div></div>`).join('');
-    box.innerHTML = `<h2 style="margin:26px 0 10px">Comprobaciones de seguridad</h2>
+    box.innerHTML = `<h2 style="margin:26px 0 10px">Security checks</h2>
       <div class="panel">${rows||'<div class="empty">—</div>'}</div>`;
   }catch(e){ box.innerHTML=''; }
 }
 async function bootstrapService(backend){
   let plan;
   try{ plan = await fetch('/api/system/bootstrap/'+backend+'/plan').then(r=>r.json()); }
-  catch(e){ toast('No se pudo obtener el plan.'); return; }
+  catch(e){ toast('Could not get the plan.'); return; }
   if(!plan.checksum_configured){
-    alert(`La instalación completa de ${backend.toUpperCase()} no está configurada.\n\nFija el origen pineado y su SHA-256 en el .env:\n  VPNM_BOOTSTRAP_${backend.toUpperCase()}_URL (a un commit concreto de ${plan.repo})\n  VPNM_BOOTSTRAP_${backend.toUpperCase()}_SHA256\n\n(cómputo: curl -sL <url> | sha256sum)`);
+    alert(`Full installation of ${backend.toUpperCase()} is not configured.\n\nSet the pinned source and its SHA-256 in .env:\n  VPNM_BOOTSTRAP_${backend.toUpperCase()}_URL (pointing to a specific commit of ${plan.repo})\n  VPNM_BOOTSTRAP_${backend.toUpperCase()}_SHA256\n\n(compute: curl -sL <url> | sha256sum)`);
     return;
   }
-  if(!confirm(`Instalación COMPLETA de ${backend.toUpperCase()} con el script de ${plan.repo}.\n\nSe descargará desde:\n${plan.url}\nse verificará su SHA-256 y se ejecutará (configura el servidor entero).\n\n¿Continuar?`)) return;
+  if(!confirm(`FULL installation of ${backend.toUpperCase()} using the script from ${plan.repo}.\n\nWill be downloaded from:\n${plan.url}\nits SHA-256 will be verified and then executed (configures the entire server).\n\nContinue?`)) return;
   try{
     const r = await fetch('/api/system/bootstrap/'+backend,{method:'POST'});
     const d = await r.json().catch(()=>({}));
-    if(!r.ok){ toast(d.detail||'No se pudo instalar.'); return; }
-    toast(d.simulated ? 'Sandbox: instalación completa simulada ✓' : 'Servidor instalado y configurado ✓');
+    if(!r.ok){ toast(d.detail||'Could not install.'); return; }
+    toast(d.simulated ? 'Sandbox: full installation simulated ✓' : 'Server installed and configured ✓');
     loadSystem();
-  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+  }catch(e){ toast('Could not connect to the server.'); }
 }
 async function installService(backend){
   let plan;
   try{ plan = await fetch('/api/system/install/'+backend+'/plan').then(r=>r.json()); }
-  catch(e){ toast('No se pudo obtener el plan.'); return; }
+  catch(e){ toast('Could not get the plan.'); return; }
   const cmds = (plan.commands||[]).map(c=>'  '+c.join(' ')).join('\n');
-  if(!confirm(`Se instalará ${backend.toUpperCase()} con:\n\n${cmds}\n\n¿Continuar?`)) return;
+  if(!confirm(`${backend.toUpperCase()} will be installed with:\n\n${cmds}\n\nContinue?`)) return;
   try{
     const r = await fetch('/api/system/install/'+backend,{method:'POST'});
     const d = await r.json().catch(()=>({}));
-    if(!r.ok){ toast(d.detail||'No se pudo instalar.'); return; }
-    toast(d.simulated ? 'Sandbox: instalación simulada (ver plan) ✓' : 'Instalado ✓');
+    if(!r.ok){ toast(d.detail||'Could not install.'); return; }
+    toast(d.simulated ? 'Sandbox: installation simulated (see plan) ✓' : 'Installed ✓');
     loadSystem();
-  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+  }catch(e){ toast('Could not connect to the server.'); }
 }
 
-// ── Permisos / usuario actual ──
+// ── Permissions / current user ──
 let _me = {permissions:[]};
 const can = p => Array.isArray(_me.permissions) && _me.permissions.includes(p);
 
@@ -574,8 +574,8 @@ async function loadMe(){
   const chip=document.getElementById('me-chip');
   chip.style.display=''; document.getElementById('me-user').textContent=_me.user||'—';
   document.getElementById('me-role').textContent=_me.role_label||'';
-  document.getElementById('nav-usuarios').style.display = can('users:manage') ? '' : 'none';
-  document.getElementById('nav-actividad').style.display = can('audit:read') ? '' : 'none';
+  document.getElementById('nav-users').style.display = can('users:manage') ? '' : 'none';
+  document.getElementById('nav-activity').style.display = can('audit:read') ? '' : 'none';
   applyPerms();
 }
 function applyPerms(){
@@ -583,7 +583,7 @@ function applyPerms(){
   const eb=document.getElementById('cfg-edit-btn'); if(eb) eb.style.display = can('server:write') ? '' : 'none';
 }
 
-// ── Gestión de usuarios ──
+// ── User management ──
 async function loadUsers(){
   if(!can('users:manage')) return;
   try{
@@ -592,15 +592,15 @@ async function loadUsers(){
     if(sel && !sel.options.length) sel.innerHTML=d.roles.map(r=>`<option value="${r.id}">${esc(r.label)}</option>`).join('');
     document.getElementById('users').innerHTML = d.users.map(u=>{
       const isMe = u.username===_me.user;
-      return `<div class="row"><div><div class="name">${esc(u.username)}${isMe?' <span class="sub">(tú)</span>':''}</div>
+      return `<div class="row"><div><div class="name">${esc(u.username)}${isMe?' <span class="sub">(you)</span>':''}</div>
         <div class="meta">${esc(u.role_label)}</div></div>
         <div class="right"><div class="actions">
-          <button class="act" onclick="changeRole('${esc(u.username)}','${u.role}')">Cambiar rol</button>
-          <button class="act" onclick="resetPass('${esc(u.username)}')">Cambiar contraseña</button>
-          ${isMe?'':`<button class="act danger" onclick="deleteUser('${esc(u.username)}')">Borrar</button>`}
+          <button class="act" onclick="changeRole('${esc(u.username)}','${u.role}')">Change role</button>
+          <button class="act" onclick="resetPass('${esc(u.username)}')">Change password</button>
+          ${isMe?'':`<button class="act danger" onclick="deleteUser('${esc(u.username)}')">Delete</button>`}
         </div></div></div>`;
     }).join('');
-  }catch(e){ document.getElementById('users').innerHTML='<div class="err">No se pudieron cargar los usuarios.</div>'; }
+  }catch(e){ document.getElementById('users').innerHTML='<div class="err">Could not load users.</div>'; }
 }
 function toggleUserForm(open){ document.getElementById('user-form').classList.toggle('open',open); document.getElementById('user-add-btn').style.visibility=open?'hidden':'visible'; uhint(''); }
 function uhint(m,bad){ const h=document.getElementById('u-hint'); h.textContent=m; h.className='formhint'+(bad?' bad':''); h.style.display=m?'block':'none'; }
@@ -608,40 +608,40 @@ async function createUser(){
   const username=document.getElementById('u-name').value.trim();
   const password=document.getElementById('u-pass').value;
   const role=document.getElementById('u-role').value;
-  if(!username||!password){ uhint('Rellena usuario y contraseña.',true); return; }
+  if(!username||!password){ uhint('Please fill in username and password.',true); return; }
   try{
     const r=await fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,role})});
     const d=await r.json().catch(()=>({}));
-    if(!r.ok){ uhint(d.detail||'No se pudo crear.',true); return; }
+    if(!r.ok){ uhint(d.detail||'Could not create user.',true); return; }
     document.getElementById('u-name').value=''; document.getElementById('u-pass').value='';
-    toggleUserForm(false); toast('Usuario creado ✓'); loadUsers();
-  }catch(e){ uhint('No se pudo conectar.',true); }
+    toggleUserForm(false); toast('User created ✓'); loadUsers();
+  }catch(e){ uhint('Could not connect.',true); }
 }
 async function changeRole(username, current){
-  const role=prompt(`Nuevo rol para «${username}» (admin / operator / viewer):`, current);
+  const role=prompt(`New role for "${username}" (admin / operator / viewer):`, current);
   if(!role) return;
   try{
     const r=await fetch('/api/users/'+encodeURIComponent(username),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:role.trim()})});
-    const d=await r.json().catch(()=>({})); if(!r.ok){ toast(d.detail||'No se pudo cambiar.'); return; }
-    toast('Rol actualizado ✓'); loadUsers();
-  }catch(e){ toast('No se pudo conectar.'); }
+    const d=await r.json().catch(()=>({})); if(!r.ok){ toast(d.detail||'Could not change.'); return; }
+    toast('Role updated ✓'); loadUsers();
+  }catch(e){ toast('Could not connect.'); }
 }
 async function resetPass(username){
-  const password=prompt(`Nueva contraseña para «${username}» (mín. 8):`,'');
+  const password=prompt(`New password for "${username}" (min. 8):`,'');
   if(!password) return;
   try{
     const r=await fetch('/api/users/'+encodeURIComponent(username),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
-    const d=await r.json().catch(()=>({})); if(!r.ok){ toast(d.detail||'No se pudo cambiar.'); return; }
-    toast('Contraseña actualizada ✓');
-  }catch(e){ toast('No se pudo conectar.'); }
+    const d=await r.json().catch(()=>({})); if(!r.ok){ toast(d.detail||'Could not change.'); return; }
+    toast('Password updated ✓');
+  }catch(e){ toast('Could not connect.'); }
 }
 async function deleteUser(username){
-  if(!confirm(`¿Borrar al usuario «${username}»? Dejará de poder entrar al panel.`)) return;
+  if(!confirm(`Delete user "${username}"? They will no longer be able to access the panel.`)) return;
   try{
     const r=await fetch('/api/users/'+encodeURIComponent(username),{method:'DELETE'});
-    const d=await r.json().catch(()=>({})); if(!r.ok){ toast(d.detail||'No se pudo borrar.'); return; }
-    toast('Usuario borrado ✓'); loadUsers();
-  }catch(e){ toast('No se pudo conectar.'); }
+    const d=await r.json().catch(()=>({})); if(!r.ok){ toast(d.detail||'Could not delete.'); return; }
+    toast('User deleted ✓'); loadUsers();
+  }catch(e){ toast('Could not connect.'); }
 }
 
 function setBackend(name){
@@ -650,7 +650,7 @@ function setBackend(name){
   _editingServer = false; _serverInfo = null; _cfgSchema = null;
   document.querySelectorAll('#backend-switch button').forEach(b =>
     b.classList.toggle('on', b.dataset.b === name));
-  document.getElementById('server-info').innerHTML = '<div class="empty">Cargando…</div>';
+  document.getElementById('server-info').innerHTML = '<div class="empty">Loading…</div>';
   document.getElementById('cfg-edit-btn').style.display = '';
   load(); loadLogs();
 }
@@ -659,11 +659,11 @@ function renderServerView(){
   document.getElementById('cfg-edit-btn').style.display = '';
 }
 
-// ── Edición de la configuración del servidor ──
+// ── Server configuration editing ──
 async function editServer(){
   if(!_cfgSchema){
     try{ _cfgSchema = (await fetch(api('/server/schema')).then(r=>r.json())).fields; }
-    catch(e){ toast('No se pudo cargar el formulario.'); return; }
+    catch(e){ toast('Could not load the form.'); return; }
   }
   document.getElementById('cfg-edit-btn').style.display = 'none';
   _editingServer = true;
@@ -697,7 +697,7 @@ async function editServer(){
   const advanced = allowAdvanced ? dirs.filter(d => !known.has(d.key)) : [];
   const advHtml = advanced.map((d,i)=>advRowHtml(d.key,d.value,i)).join('');
   const advSection = allowAdvanced ? `
-      <div class="cfgsub">Otras directivas (avanzado)</div>
+      <div class="cfgsub">Other directives (advanced)</div>
       <div id="adv-rows">${advHtml}</div>` : '<div id="adv-rows"></div>';
 
   document.getElementById('server-info').innerHTML = `
@@ -705,17 +705,17 @@ async function editServer(){
       ${_cfgSchema.map(fieldHtml).join('')}
       ${advSection}
       <div class="cfgbar">
-        ${allowAdvanced ? '<button class="btn addadv" type="button" onclick="addAdvRow()">+ Añadir directiva</button>' : ''}
-        <button class="btn" type="button" onclick="cancelServer()">Cancelar</button>
-        <button class="btn primary" type="button" onclick="saveServer()">Guardar configuración</button>
+        ${allowAdvanced ? '<button class="btn addadv" type="button" onclick="addAdvRow()">+ Add directive</button>' : ''}
+        <button class="btn" type="button" onclick="cancelServer()">Cancel</button>
+        <button class="btn primary" type="button" onclick="saveServer()">Save configuration</button>
       </div>
     </div>`;
 }
 function advRowHtml(k,v,i){
   return `<div class="advrow" data-adv>
-    <input type="text" placeholder="directiva" value="${esc(k)}" data-advkey>
-    <input type="text" placeholder="valor" value="${esc(v)}" data-advval>
-    <button class="del" type="button" title="Quitar" onclick="this.parentNode.remove()">×</button></div>`;
+    <input type="text" placeholder="directive" value="${esc(k)}" data-advkey>
+    <input type="text" placeholder="value" value="${esc(v)}" data-advval>
+    <button class="del" type="button" title="Remove" onclick="this.parentNode.remove()">×</button></div>`;
 }
 function addAdvRow(){ document.getElementById('adv-rows').insertAdjacentHTML('beforeend', advRowHtml('','')); }
 function cancelServer(){ _editingServer=false; renderServer(_serverInfo); document.getElementById('cfg-edit-btn').style.display=''; }
@@ -736,17 +736,17 @@ async function saveServer(){
   try{
     const r = await fetch(api('/server'),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({directives})});
     const d = await r.json().catch(()=>({}));
-    if(!r.ok){ toast(d.detail||'No se pudo guardar la configuración.'); return; }
+    if(!r.ok){ toast(d.detail||'Could not save the configuration.'); return; }
     _serverInfo = d;
     _editingServer = false;
-    toast('Configuración guardada ✓ · recuerda «Recargar» el servicio');
+    toast('Configuration saved ✓ · remember to “Reload” the service');
     renderServer(d);
     document.getElementById('cfg-edit-btn').style.display='';
-  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+  }catch(e){ toast('Could not connect to the server.'); }
 }
 
 function renderStats(st, cl, cn){
-  document.getElementById('st-svc').innerHTML = st.active?'Activo':'<small style="color:var(--stop)">Detenido</small>';
+  document.getElementById('st-svc').innerHTML = st.active?'Active':'<small style="color:var(--stop)">Stopped</small>';
   document.getElementById('st-active').textContent = cl.filter(c=>c.status==='valid').length;
   document.getElementById('st-conns').textContent = cn.length;
   document.getElementById('st-other').textContent = cl.filter(c=>c.status!=='valid').length;
@@ -757,126 +757,126 @@ function renderStats(st, cl, cn){
 function renderClients(cl){
   document.getElementById('clients').innerHTML = cl.length ? cl.map(c=>{
     const s=CLIENT_STATE[c.status]||{cls:'',dot:'idle',label:c.status};
-    const caduca = c.status==='valid'&&c.expires_at ? 'Caduca el '+fmtDate(c.expires_at)
-      : (c.status==='expired'&&c.expires_at ? 'Caducó el '+fmtDate(c.expires_at) : '');
+    const caduca = c.status==='valid'&&c.expires_at ? 'Expires '+fmtDate(c.expires_at)
+      : (c.status==='expired'&&c.expires_at ? 'Expired '+fmtDate(c.expires_at) : '');
     const n=esc(c.name);
     const enc=encodeURIComponent(c.name);
     const w = can('clients:write');
     let actions='';
     if(c.status==='valid'){
-      const qr = BACKEND==='wireguard' ? `<a class="act" href="${api('/clients/'+enc+'/qr')}" target="_blank">Código QR</a>` : '';
-      const wr = w ? `<button class="act" onclick="saveConfig('${n}')">Guardar en servidor</button>
-        <button class="act" onclick="emailConfig('${n}')">Enviar por correo</button>
-        <button class="act danger" onclick="revokeClient('${n}')">Retirar acceso</button>` : '';
+      const qr = BACKEND==='wireguard' ? `<a class="act" href="${api('/clients/'+enc+'/qr')}" target="_blank">QR code</a>` : '';
+      const wr = w ? `<button class="act" onclick="saveConfig('${n}')">Save to server</button>
+        <button class="act" onclick="emailConfig('${n}')">Send by email</button>
+        <button class="act danger" onclick="revokeClient('${n}')">Revoke access</button>` : '';
       actions=`<div class="actions">
-        <a class="act" href="${api('/clients/'+enc+'/config')}" download>Descargar</a>${qr}${wr}</div>`;
+        <a class="act" href="${api('/clients/'+enc+'/config')}" download>Download</a>${qr}${wr}</div>`;
     } else if(c.status==='expired' && w){
-      actions=`<div class="actions"><button class="act" onclick="renewClient('${n}')">Renovar acceso</button></div>`;
+      actions=`<div class="actions"><button class="act" onclick="renewClient('${n}')">Renew access</button></div>`;
     }
     return `<div class="row"><div><div class="name">${n}</div>${caduca?`<div class="meta">${caduca}</div>`:''}${actions}</div>
       <div class="right"><span class="state ${s.cls}"><span class="dot ${s.dot}"></span>${s.label}</span></div></div>`;
-  }).join('') : `<div class="empty">Todavía no hay nadie con acceso.</div>`;
+  }).join('') : `<div class="empty">No devices have access yet.</div>`;
 }
 
 function renderConns(cn){
   document.getElementById('conns').innerHTML = cn.length ? cn.map(c=>{
     const n=esc(c.name);
-    const disc = (BACKEND==='openvpn' && can('clients:write')) ? `<div class="actions"><button class="act danger" onclick="disconnectClient('${n}')">Desconectar</button></div>` : '';
+    const disc = (BACKEND==='openvpn' && can('clients:write')) ? `<div class="actions"><button class="act danger" onclick="disconnectClient('${n}')">Disconnect</button></div>` : '';
     return `<div class="row"><div><div class="name">${n}</div>
-      <div class="meta">Dirección en la red: ${esc(c.virtual_address)||'—'} · ${esc(c.real_address)||'—'}</div>
+      <div class="meta">Network address: ${esc(c.virtual_address)||'—'} · ${esc(c.real_address)||'—'}</div>
       ${disc}</div>
-      <div class="right"><span class="state s-ok"><span class="dot ok"></span>Conectado · ${since(c.connected_since)}</span>
+      <div class="right"><span class="state s-ok"><span class="dot ok"></span>Connected · ${since(c.connected_since)}</span>
       <span class="sub">↓ ${fmtBytes(c.bytes_received)}  ·  ↑ ${fmtBytes(c.bytes_sent)}</span></div></div>`;
-  }).join('') : `<div class="empty">Ahora mismo no hay nadie conectado.</div>`;
+  }).join('') : `<div class="empty">Nobody is connected right now.</div>`;
 }
 
 async function loadLogs(){
   try{
     const d = await fetch(api('/logs')).then(r=>r.json());
     const box = document.getElementById('logs');
-    if(!d.lines || !d.lines.length){ box.textContent='(sin registros disponibles)'; return; }
+    if(!d.lines || !d.lines.length){ box.textContent='(no logs available)'; return; }
     box.innerHTML = d.lines.map(l=>{
       const cls = /ERROR|revoked|reset|fail/i.test(l) ? 'lg-err' : (/Completed|established|OK/i.test(l)?'lg-ok':'');
       return `<span class="${cls}">${esc(l)}</span>`;
     }).join('\n');
     box.scrollTop = box.scrollHeight;
-  }catch(e){ document.getElementById('logs').textContent='No se pudieron cargar los registros.'; }
+  }catch(e){ document.getElementById('logs').textContent='Could not load logs.'; }
 }
 
-// ── Acciones de servicio ──
+// ── Service actions ──
 async function svcAction(action){
-  const labels={reload:'recargar',restart:'reiniciar',stop:'parar',start:'arrancar'};
-  if((action==='stop'||action==='restart') && !confirm(`¿Seguro que quieres ${labels[action]} la VPN?${action!=='reload'?'\n\nLos usuarios conectados se desconectarán.':''}`)) return;
+  const labels={reload:'reload',restart:'restart',stop:'stop',start:'start'};
+  if((action==='stop'||action==='restart') && !confirm(`Are you sure you want to ${labels[action]} the VPN?${action!=='reload'?'\n\nConnected users will be disconnected.':''}`)) return;
   try{
     const r = await fetch(api('/service/'+action),{method:'POST'});
-    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo completar la acción.'); return; }
-    toast('Servicio: '+labels[action]+' ✓');
+    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'Could not complete the action.'); return; }
+    toast('Service: '+labels[action]+' ✓');
     await load();
-  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+  }catch(e){ toast('Could not connect to the server.'); }
 }
 function toggleService(){ svcAction(_serviceActive?'stop':'start'); }
 
-// ── Altas / bajas ──
+// ── Add / remove ──
 function toggleForm(open){ document.getElementById('add-form').classList.toggle('open',open); document.getElementById('add-btn').style.visibility=open?'hidden':'visible'; hint(''); if(open) setTimeout(()=>document.getElementById('add-name').focus(),30); }
 function hint(msg,bad){ const h=document.getElementById('add-hint'); h.textContent=msg; h.className='formhint'+(bad?' bad':''); h.style.display=msg?'block':'none'; }
 async function createClient(){
   const input=document.getElementById('add-name'); const name=input.value.trim();
-  if(!name){ hint('Escribe un nombre para identificar a la persona o dispositivo.',true); return; }
-  hint('Creando acceso…');
+  if(!name){ hint('Enter a name to identify the person or device.',true); return; }
+  hint('Creating access…');
   try{
     const r=await fetch(api('/clients'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
-    if(!r.ok){ const d=await r.json().catch(()=>({})); hint(d.detail||'No se pudo crear el acceso.',true); return; }
-    input.value=''; toggleForm(false); toast('Acceso creado ✓'); await load();
-  }catch(e){ hint('No se pudo conectar con el servidor.',true); }
+    if(!r.ok){ const d=await r.json().catch(()=>({})); hint(d.detail||'Could not create access.',true); return; }
+    input.value=''; toggleForm(false); toast('Access created ✓'); await load();
+  }catch(e){ hint('Could not connect to the server.',true); }
 }
 async function revokeClient(name){
-  if(!confirm(`¿Seguro que quieres retirar el acceso de «${name}»?\n\nDejará de poder conectarse. Esta acción no se puede deshacer.`)) return;
+  if(!confirm(`Are you sure you want to revoke access for "${name}"?\n\nThey will no longer be able to connect. This action cannot be undone.`)) return;
   try{
     const r=await fetch(api(`/clients/${encodeURIComponent(name)}/revoke`),{method:'POST'});
-    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo retirar el acceso.'); return; }
-    toast('Acceso retirado ✓'); await load();
-  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'Could not revoke access.'); return; }
+    toast('Access revoked ✓'); await load();
+  }catch(e){ toast('Could not connect to the server.'); }
 }
 async function saveConfig(name){
-  const path = prompt(`¿En qué carpeta del servidor guardo la configuración de «${name}»?\n\n(Dentro del directorio permitido de exportación.)`, name);
+  const path = prompt(`In which server folder should I save the configuration for "${name}"?\n\n(Within the allowed export directory.)`, name);
   if(path===null || !path.trim()) return;
   try{
     const r=await fetch(api(`/clients/${encodeURIComponent(name)}/save`),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path.trim()})});
     const d=await r.json().catch(()=>({}));
-    if(!r.ok){ toast(d.detail||'No se pudo guardar.'); return; }
-    toast('Guardada en '+(d.path||'el servidor')+' ✓');
-  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+    if(!r.ok){ toast(d.detail||'Could not save.'); return; }
+    toast('Saved to '+(d.path||'the server')+' ✓');
+  }catch(e){ toast('Could not connect to the server.'); }
 }
 async function emailConfig(name){
-  const email = prompt(`¿A qué correo envío la configuración de «${name}»?\n\n(El correo no es un canal seguro; trátala como una credencial.)`, '');
+  const email = prompt(`Which email should I send the configuration for "${name}" to?\n\n(Email is not a secure channel; treat it like a credential.)`, '');
   if(email===null || !email.trim()) return;
   try{
     const r=await fetch(api(`/clients/${encodeURIComponent(name)}/email`),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.trim()})});
     const d=await r.json().catch(()=>({}));
-    if(!r.ok){ toast(d.detail||'No se pudo enviar.'); return; }
-    toast(d.simulated ? 'Correo simulado (SMTP no configurado) ✓' : 'Enviado a '+d.to+' ✓');
-  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+    if(!r.ok){ toast(d.detail||'Could not send.'); return; }
+    toast(d.simulated ? 'Email simulated (SMTP not configured) ✓' : 'Sent to '+d.to+' ✓');
+  }catch(e){ toast('Could not connect to the server.'); }
 }
 async function renewClient(name){
   try{
     const r=await fetch(api(`/clients/${encodeURIComponent(name)}/renew`),{method:'POST'});
-    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo renovar.'); return; }
-    toast('Acceso renovado ✓'); await load();
-  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'Could not renew.'); return; }
+    toast('Access renewed ✓'); await load();
+  }catch(e){ toast('Could not connect to the server.'); }
 }
 async function disconnectClient(name){
-  if(!confirm(`¿Desconectar a «${name}» de la VPN ahora mismo?\n\nSe le cortará la conexión actual; podrá volver a conectarse.`)) return;
+  if(!confirm(`Disconnect "${name}" from the VPN now?\n\nTheir current connection will be cut; they can reconnect.`)) return;
   try{
     const r=await fetch(api(`/connections/${encodeURIComponent(name)}/disconnect`),{method:'POST'});
-    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'No se pudo desconectar.'); return; }
-    toast('Desconectado ✓'); await load();
-  }catch(e){ toast('No se pudo conectar con el servidor.'); }
+    if(!r.ok){ const d=await r.json().catch(()=>({})); toast(d.detail||'Could not disconnect.'); return; }
+    toast('Disconnected ✓'); await load();
+  }catch(e){ toast('Could not connect to the server.'); }
 }
 
 (async () => {
   await loadMe();
   applyBackend('openvpn');
-  showPage('resumen');
+  showPage('overview');
   load(); loadLogs();
 })();
 setInterval(load, 10000);
