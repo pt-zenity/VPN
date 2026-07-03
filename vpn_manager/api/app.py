@@ -44,7 +44,9 @@ _SECURITY_HEADERS = {
     "Cross-Origin-Opener-Policy": "same-origin",
     "Content-Security-Policy": (
         "default-src 'self'; img-src 'self' data:; "
-        "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; "
+        "connect-src 'self' https://cloudflareinsights.com; "
         "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
     ),
 }
@@ -233,6 +235,22 @@ _PROTECTED = [Depends(require_user)]
 
 
 # ── Páginas ──────────────────────────────────────────────────────────────────
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon_svg() -> Response:
+    """Serve the SVG favicon (modern browsers)."""
+    data = (_UI / "favicon.svg").read_bytes()
+    return Response(content=data, media_type="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico() -> Response:
+    """Serve favicon.ico — redirect browsers to SVG version."""
+    data = (_UI / "favicon.svg").read_bytes()
+    return Response(content=data, media_type="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.get("/", response_class=HTMLResponse)
 def ui(request: Request):
     if not request.session.get("user"):
