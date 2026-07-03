@@ -80,8 +80,9 @@ body {
   display: none;
   position: fixed; inset: 0;
   background: rgba(0,0,0,.5);
-  z-index: 199;
+  z-index: 201;
   backdrop-filter: blur(2px);
+  cursor: pointer;
 }
 .sb-overlay.open { display: block; }
 
@@ -94,7 +95,7 @@ body {
   flex-direction: column;
   position: fixed;
   top: 0; left: 0; bottom: 0;
-  z-index: 200;
+  z-index: 202;
   overflow-y: auto;
   overflow-x: hidden;
   transition: transform .28s cubic-bezier(.4,0,.2,1);
