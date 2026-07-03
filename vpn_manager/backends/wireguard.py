@@ -342,7 +342,7 @@ class WireGuardBackend(VpnBackend):
                 raise InvalidName(err)
             out.append(f"{key} = {value}" if value else key)
 
-        lines = ["# Configuración WireGuard — gestionada por VPN Manager", "[Interface]"]
+        lines = ["# WireGuard configuration — managed by VPN Manager", "[Interface]"]
         if priv:
             lines.append(f"PrivateKey = {priv}")
         lines.extend(out)
@@ -359,7 +359,7 @@ class WireGuardBackend(VpnBackend):
             raise InvalidName(f"Acción no permitida. Usa una de: {', '.join(_SERVICE_ACTIONS)}.")
         if self.sandbox:
             return ServiceStatus(
-                backend=self.name, active=action != "stop", detail=f"sandbox: «{action}» simulado"
+                backend=self.name, active=action != "stop", detail=f"sandbox: '{action}' simulated"
             )
         try:  # pragma: no cover
             subprocess.run(
@@ -383,7 +383,7 @@ class WireGuardBackend(VpnBackend):
         try:
             import segno
         except ImportError as e:  # pragma: no cover
-            raise VpnError("Falta la dependencia «segno» para generar el QR.") from e
+            raise VpnError("Missing 'segno' dependency for QR generation.") from e
         config = self.client_config(name)
         qr = segno.make(config, error="m")
         return qr.svg_inline(scale=4, border=2)
@@ -405,7 +405,7 @@ class WireGuardBackend(VpnBackend):
         iface = self._parse_interface()
         port = iface.get("ListenPort", "51820")
         return (
-            f"# Configuración WireGuard para «{name}»\n"
+            f"# WireGuard configuration for '{name}'\n"
             "[Interface]\n"
             f"PrivateKey = {priv}\n"
             f"Address = {ip}/32\n"

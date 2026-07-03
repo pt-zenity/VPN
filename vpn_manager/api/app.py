@@ -49,12 +49,12 @@ _SECURITY_HEADERS = {
     ),
 }
 
-# Credenciales y clave de sesión resueltas una vez al arrancar.
+# Credentials and session key resolved once at startup.
 _ADMIN_USER, _ADMIN_HASH = auth.resolve_credentials(
     settings.admin_user, settings.admin_password_hash, settings.sandbox
 )
 _throttle = auth.LoginThrottle()
-# Almacén de usuarios del panel (multiusuario + roles); siembra el admin de config.
+# Panel user store (multi-user + roles); seeds the config admin.
 _users = users.UserStore(settings.users_file, _ADMIN_USER, _ADMIN_HASH, "admin")
 
 
@@ -269,7 +269,7 @@ def login(
             _throttle.reset(ip)
             request.session.clear()
             request.session["user"] = pending
-            log.info("login correcto (%s) [2FA] desde %s", pending, ip)
+            log.info("login successful (%s) [2FA] from %s", pending, ip)
             return RedirectResponse("/", status_code=303)
         _throttle.record_failure(ip)
         log.warning("incorrect 2FA code (user=%r) from %s", pending[:32], ip)
@@ -290,7 +290,7 @@ def login(
     _throttle.reset(ip)
     request.session.clear()
     request.session["user"] = username
-    log.info("login correcto (%s) desde %s", username, ip)
+    log.info("login successful (%s) from %s", username, ip)
     return RedirectResponse("/", status_code=303)
 
 
@@ -691,7 +691,7 @@ def openvpn_disconnect(name: str, user: str = Depends(require_perm("clients:writ
         _openvpn().disconnect(name)
     except VpnError as e:
         raise _http(e) from e
-    log.info("desconexión de «%s» por %s", name, user)
+    log.info("disconnect of '%s' by %s", name, user)
     return Response(status_code=204)
 
 

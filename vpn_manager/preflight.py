@@ -24,8 +24,8 @@ def checks(settings) -> list[dict]:
     if settings.admin_password_hash:
         add("ok", "Administrator password configured (hash).")
     elif settings.sandbox:
-        add("warn", "Using development credentials «admin/admin». Set "
-                    "VPNM_ADMIN_PASSWORD_HASH (generate with «python -m vpn_manager.hashpw»).")
+        add("warn", "Using development credentials (admin/admin). Set "
+                    "VPNM_ADMIN_PASSWORD_HASH (generate with: python -m vpn_manager.hashpw).")
 
     # Session key.
     if settings.secret_key:
@@ -38,10 +38,10 @@ def checks(settings) -> list[dict]:
     if settings.cookie_secure:
         add("ok", "Secure cookies (Secure + HSTS) enabled; always serve behind HTTPS.")
     elif settings.sandbox:
-        add("info", "Cookies without «Secure» (acceptable locally). Enable VPNM_COOKIE_SECURE=true "
+        add("info", "Cookies without Secure flag (acceptable locally). Enable VPNM_COOKIE_SECURE=true "
                     "when serving behind HTTPS.")
     else:
-        add("warn", "Production WITHOUT «Secure» cookies: enable VPNM_COOKIE_SECURE=true and serve "
+        add("warn", "Production WITHOUT Secure cookies: enable VPNM_COOKIE_SECURE=true and serve "
                     "behind HTTPS.")
 
     # Service installation.

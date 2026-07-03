@@ -82,7 +82,7 @@ class OpenVpnBackend(VpnBackend):
                 "(entre 1 y 64 caracteres)."
             )
         if name == self.server_cn:
-            raise Forbidden("Ese nombre está reservado para el servidor.")
+            raise Forbidden("That name is reserved for the server.")
         return name
 
     def _index_lines(self) -> list[str]:
@@ -321,7 +321,7 @@ class OpenVpnBackend(VpnBackend):
         if self.sandbox:
             active = action != "stop"
             return ServiceStatus(
-                backend=self.name, active=active, detail=f"sandbox: «{action}» simulado"
+                backend=self.name, active=active, detail=f"sandbox: '{action}' simulated"
             )
         try:
             subprocess.run(
@@ -339,10 +339,10 @@ class OpenVpnBackend(VpnBackend):
         name = self._check_name(name)
         active = {c.name for c in self.connections()}
         if name not in active:
-            raise NotFound(f"«{name}» no tiene ninguna conexión activa.")
+            raise NotFound(f"'{name}' has no active connection.")
         if not self.sandbox:  # pragma: no cover - requiere interfaz de management
             raise VpnError(
-                "Desconexión en producción aún no implementada (requiere la "
+                "Disconnect in production not yet implemented (requires the "
                 "interfaz de management de OpenVPN)."
             )
         # Sandbox: elimina del fichero de estado las filas del cliente (tanto la
@@ -410,7 +410,7 @@ class OpenVpnBackend(VpnBackend):
             if err:
                 raise InvalidName(err)
             cleaned.append(f"{key} {value}".rstrip())
-        header = "# Configuración del servidor OpenVPN — gestionada por VPN Manager"
+        header = "# OpenVPN server configuration — managed by VPN Manager"
         self.server_conf.parent.mkdir(parents=True, exist_ok=True)
         self.server_conf.write_text(header + "\n" + "\n".join(cleaned) + "\n", encoding="utf-8")
         return self.server_info()
@@ -430,7 +430,7 @@ class OpenVpnBackend(VpnBackend):
             )
             return out.stdout.splitlines()
         except Exception as e:  # noqa: BLE001  # pragma: no cover
-            return [f"(no se pudieron leer los registros: {e})"]
+            return [f"(could not read logs: {e})"]
 
     # ── Helpers de escritura ───────────────────────────────────────────────
     def _save_config(self, name: str, content: str) -> None:
@@ -446,7 +446,7 @@ class OpenVpnBackend(VpnBackend):
         cipher = (info.cipher or "AES-256-GCM").split(":")[0]
         auth = info.auth or "SHA256"
         return (
-            f"# Configuración OpenVPN para «{name}»\n"
+            f"# OpenVPN configuration for '{name}'\n"
             f"{marca}\n"
             "client\n"
             f"dev {dev}\n"
@@ -460,7 +460,7 @@ class OpenVpnBackend(VpnBackend):
             f"data-ciphers {cipher}\n"
             f"auth {auth}\n"
             "verb 3\n"
-            f"# <ca>, <cert> y <key> de «{name}» se insertan aquí en producción.\n"
+            f"# <ca>, <cert> and <key> for '{name}' are embedded here in production.\n"
         )
 
     def _easyrsa(self, *args: str, batch: bool = False) -> None:

@@ -48,8 +48,8 @@ FIELDS: list[dict] = [
      "desc": "Do not close the tun/tap device on restart."},
     {"key": "crl-verify", "label": "Revocation list (CRL)", "type": "text",
      "desc": "Path to the CRL file to reject revoked certificates."},
-    {"key": "verb", "label": "Nivel de log", "type": "number", "min": 0, "max": 11,
-     "desc": "Verbosidad de los registros (0 = nada, 3 = normal, 9 = depuración)."},
+    {"key": "verb", "label": "Log level", "type": "number", "min": 0, "max": 11,
+     "desc": "Log verbosity (0 = none, 3 = normal, 9 = debug)."},
 ]
 
 FIELDS_BY_KEY = {f["key"]: f for f in FIELDS}
@@ -60,24 +60,24 @@ _KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,40}$")
 def validate_directive(key: str, value: str) -> str | None:
     """Devuelve un mensaje de error si la directiva no es válida, o None si lo es."""
     if not _KEY_RE.match(key):
-        return f"Directiva no válida: «{key}»."
+        return f"Invalid directive: '{key}'."
     if "\n" in value or "\r" in value:
-        return f"El valor de «{key}» no puede tener saltos de línea."
+        return f"The value of '{key}' cannot contain newlines."
     field = FIELDS_BY_KEY.get(key)
     if not field:
         return None  # directiva avanzada/desconocida: se acepta tal cual
     t = field["type"]
     if t == "number":
         if not value.strip().lstrip("-").isdigit():
-            return f"«{field['label']}» debe ser un número."
+            return f"'{field['label']}' must be a number."
         n = int(value)
         if "min" in field and n < field["min"]:
-            return f"«{field['label']}» debe ser ≥ {field['min']}."
+            return f"'{field['label']}' must be ≥ {field['min']}."
         if "max" in field and n > field["max"]:
-            return f"«{field['label']}» debe ser ≤ {field['max']}."
+            return f"'{field['label']}' must be ≤ {field['max']}."
     elif t == "select" and value and value not in field["options"]:
-        return f"«{field['label']}» debe ser uno de: {', '.join(field['options'])}."
+        return f"'{field['label']}' must be one of: {', '.join(field['options'])}."
     elif t == "text" and field.get("pattern") and value:
         if not re.match(field["pattern"], value.strip()):
-            return f"«{field['label']}» no tiene el formato esperado."
+            return f"'{field['label']}' does not match the expected format."
     return None

@@ -46,10 +46,10 @@ def resolve_credentials(admin_user: str, admin_password_hash: str, sandbox: bool
     if not sandbox:
         raise RuntimeError(
             "Missing VPNM_ADMIN_PASSWORD_HASH: the panel will not start without a password "
-            "en producción. Genera un hash con «python -m vpn_manager.hashpw»."
+            "in production. Generate a hash with: python -m vpn_manager.hashpw."
         )
     log.warning(
-        "⚠️  Modo desarrollo: usando credenciales por defecto «%s/%s». "
+        "⚠️  Development mode: using default credentials '%s/%s'. "
         "Configura VPNM_ADMIN_PASSWORD_HASH antes de exponer el panel.",
         admin_user, _DEV_PASSWORD,
     )
@@ -61,9 +61,9 @@ def resolve_secret(secret_key: str, sandbox: bool = True) -> str:
         return secret_key
     if not sandbox:
         raise RuntimeError(
-            "Falta VPNM_SECRET_KEY: el panel no arranca sin clave de sesión en "
-            "producción. Genérala con «python -c \"import secrets; "
-            "print(secrets.token_hex(32))\"»."
+            "Missing VPNM_SECRET_KEY: the panel will not start without a session key in "
+            "production. Generate one with: python -c \"import secrets; "
+            "print(secrets.token_hex(32))\"."
         )
     log.warning(
         "⚠️  VPNM_SECRET_KEY no configurada: se usa una clave efímera "

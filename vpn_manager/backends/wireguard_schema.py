@@ -41,21 +41,21 @@ _KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,30}$")
 
 def validate_directive(key: str, value: str) -> str | None:
     if not _KEY_RE.match(key):
-        return f"Directiva no válida: «{key}»."
+        return f"Invalid directive: '{key}'."
     if "\n" in value or "\r" in value:
-        return f"El valor de «{key}» no puede tener saltos de línea."
+        return f"The value of '{key}' cannot contain newlines."
     field = FIELDS_BY_KEY.get(key)
     if not field:
         return None
     if field["type"] == "number":
         if not value.strip().isdigit():
-            return f"«{field['label']}» debe ser un número."
+            return f"'{field['label']}' must be a number."
         n = int(value)
         if "min" in field and n < field["min"]:
-            return f"«{field['label']}» debe ser ≥ {field['min']}."
+            return f"'{field['label']}' must be ≥ {field['min']}."
         if "max" in field and n > field["max"]:
-            return f"«{field['label']}» debe ser ≤ {field['max']}."
+            return f"'{field['label']}' must be ≤ {field['max']}."
     elif field["type"] == "text" and field.get("pattern") and value:
         if not re.match(field["pattern"], value.strip()):
-            return f"«{field['label']}» no tiene el formato esperado."
+            return f"'{field['label']}' does not match the expected format."
     return None
