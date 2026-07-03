@@ -45,7 +45,7 @@ def resolve_credentials(admin_user: str, admin_password_hash: str, sandbox: bool
         return admin_user, admin_password_hash
     if not sandbox:
         raise RuntimeError(
-            "Falta VPNM_ADMIN_PASSWORD_HASH: el panel no arranca sin contraseña "
+            "Missing VPNM_ADMIN_PASSWORD_HASH: the panel will not start without a password "
             "en producción. Genera un hash con «python -m vpn_manager.hashpw»."
         )
     log.warning(

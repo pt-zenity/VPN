@@ -26,7 +26,7 @@ PERMISSIONS: dict[str, set[str]] = {
     "viewer": {"clients:read", "server:read", "logs:read"},
 }
 ROLES = list(PERMISSIONS)
-ROLE_LABELS = {"admin": "Administrador", "operator": "Operador", "viewer": "Solo lectura"}
+ROLE_LABELS = {"admin": "Administrator", "operator": "Operator", "viewer": "Read only"}
 
 _USERNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{1,31}$")
 # Hash de relleno para igualar tiempos cuando el usuario no existe (anti-enumeración).

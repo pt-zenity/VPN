@@ -139,7 +139,7 @@ def _deliver_save(backend, name: str, ext: str, dest: str, user: str) -> dict:
         raise _http(e) from e
     except delivery.DeliveryError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
-    log.info("config de «%s» guardada en %s por %s", name, path, user)
+    log.info("config for '%s' saved to %s by %s", name, path, user)
     return {"saved": True, "path": str(path)}
 
 
@@ -151,7 +151,7 @@ def _deliver_email(backend, name: str, ext: str, email: str, user: str) -> dict:
         raise _http(e) from e
     except delivery.DeliveryError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
-    log.info("config de «%s» enviada por correo a %s por %s", name, result["to"], user)
+    log.info("config for '%s' emailed to %s by %s", name, result["to"], user)
     return result
 
 
@@ -272,14 +272,14 @@ def login(
             log.info("login correcto (%s) [2FA] desde %s", pending, ip)
             return RedirectResponse("/", status_code=303)
         _throttle.record_failure(ip)
-        log.warning("2FA incorrecto (usuario=%r) desde %s", pending[:32], ip)
+        log.warning("incorrect 2FA code (user=%r) from %s", pending[:32], ip)
         return HTMLResponse(_render_login("Incorrect verification code.", "code"),
                             status_code=401)
 
     # Primer paso: usuario + contraseña.
     if not _users.verify(username, password):
         _throttle.record_failure(ip)
-        log.warning("login fallido (usuario=%r) desde %s", username[:32], ip)
+        log.warning("login failed (user=%r) from %s", username[:32], ip)
         return HTMLResponse(_render_login("Incorrect username or password."), status_code=401)
 
     if _users.totp_enabled(username):
@@ -397,7 +397,7 @@ def users_create(body: CreateUser, admin: str = Depends(require_perm("users:mana
         _users.add(body.username, body.password, body.role)
     except users.UserError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
-    log.info("usuario «%s» (rol %s) creado por %s", body.username, body.role, admin)
+    log.info("user '%s' (role %s) created by %s", body.username, body.role, admin)
     return {"created": body.username}
 
 
@@ -407,7 +407,7 @@ def users_update(username: str, body: UpdateUser, admin: str = Depends(require_p
         _users.update(username, role=body.role, password=body.password)
     except users.UserError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
-    log.info("usuario «%s» modificado por %s", username, admin)
+    log.info("user '%s' updated by %s", username, admin)
     return {"updated": username}
 
 
@@ -419,7 +419,7 @@ def users_delete(username: str, admin: str = Depends(require_perm("users:manage"
         _users.delete(username)
     except users.UserError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
-    log.info("usuario «%s» borrado por %s", username, admin)
+    log.info("user '%s' deleted by %s", username, admin)
     return {"deleted": username}
 
 
@@ -459,7 +459,7 @@ def openvpn_server_update(body: ServerConfigUpdate, user: str = Depends(require_
         info = _openvpn().update_server_config([(d.key, d.value) for d in body.directives])
     except VpnError as e:
         raise _http(e) from e
-    log.info("configuración del servidor OpenVPN modificada por %s", user)
+    log.info("OpenVPN server configuration updated by %s", user)
     return info
 
 
@@ -476,7 +476,7 @@ def openvpn_service_action(action: str, user: str = Depends(require_perm("servic
         status = _openvpn().service_action(action)
     except VpnError as e:
         raise _http(e) from e
-    log.info("acción de servicio «%s» por %s -> activo=%s", action, user, status.active)
+    log.info("service action '%s' by %s -> active=%s", action, user, status.active)
     return status
 
 
@@ -506,7 +506,7 @@ def system_install(backend: str, admin: str = Depends(require_perm("system:insta
         result = installer.install(backend, settings.sandbox, settings.allow_install)
     except installer.InstallError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
-    log.info("instalación de «%s» solicitada por %s (simulada=%s)", backend, admin,
+    log.info("installation of '%s' requested by %s (simulated=%s)", backend, admin,
              result.get("simulated"))
     return result
 
@@ -525,7 +525,7 @@ def system_bootstrap(backend: str, admin: str = Depends(require_perm("system:ins
         result = bootstrap.run(backend, settings, settings.sandbox)
     except bootstrap.BootstrapError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
-    log.info("instalación llave en mano de «%s» por %s (simulada=%s)", backend, admin,
+    log.info("full install of '%s' by %s (simulated=%s)", backend, admin,
              result.get("simulated"))
     return result
 
@@ -566,7 +566,7 @@ def wg_server_update(body: ServerConfigUpdate, user: str = Depends(require_perm(
         info = _wireguard().update_server_config([(d.key, d.value) for d in body.directives])
     except VpnError as e:
         raise _http(e) from e
-    log.info("configuración del servidor WireGuard modificada por %s", user)
+    log.info("WireGuard server configuration updated by %s", user)
     return info
 
 
@@ -583,7 +583,7 @@ def wg_create(body: CreateClient, user: str = Depends(require_perm("clients:writ
         client = _wireguard().create_client(body.name)
     except VpnError as e:
         raise _http(e) from e
-    log.info("alta de dispositivo WireGuard «%s» por %s", client.name, user)
+    log.info("WireGuard device '%s' created by %s", client.name, user)
     return client
 
 
@@ -595,7 +595,7 @@ def wg_revoke(name: str, user: str = Depends(require_perm("clients:write"))) -> 
         client = _wireguard().revoke_client(name)
     except VpnError as e:
         raise _http(e) from e
-    log.info("baja de dispositivo WireGuard «%s» por %s", client.name, user)
+    log.info("WireGuard device '%s' revoked by %s", client.name, user)
     return client
 
 
@@ -609,7 +609,7 @@ def wg_config(name: str, user: str = Depends(require_user)) -> Response:
         text = _wireguard().client_config(name)
     except VpnError as e:
         raise _http(e) from e
-    log.info("descarga de configuración de «%s» por %s", name, user)
+    log.info("config download for '%s' by %s", name, user)
     return PlainTextResponse(
         text, headers={"Content-Disposition": f'attachment; filename="{name}.conf"'}
     )
@@ -642,7 +642,7 @@ def wg_service_action(action: str, user: str = Depends(require_perm("service:con
         status = _wireguard().service_action(action)
     except VpnError as e:
         raise _http(e) from e
-    log.info("acción de servicio WireGuard «%s» por %s -> activo=%s", action, user, status.active)
+    log.info("WireGuard service action '%s' by %s -> active=%s", action, user, status.active)
     return status
 
 
@@ -655,7 +655,7 @@ def openvpn_create(body: CreateClient, user: str = Depends(require_perm("clients
         client = _openvpn().create_client(body.name)
     except VpnError as e:
         raise _http(e) from e
-    log.info("alta de acceso «%s» por %s", client.name, user)
+    log.info("OpenVPN access '%s' created by %s", client.name, user)
     return client
 
 
@@ -667,7 +667,7 @@ def openvpn_revoke(name: str, user: str = Depends(require_perm("clients:write"))
         client = _openvpn().revoke_client(name)
     except VpnError as e:
         raise _http(e) from e
-    log.info("revocación de acceso «%s» por %s", client.name, user)
+    log.info("OpenVPN access '%s' revoked by %s", client.name, user)
     return client
 
 
@@ -679,7 +679,7 @@ def openvpn_renew(name: str, user: str = Depends(require_perm("clients:write")))
         client = _openvpn().renew_client(name)
     except VpnError as e:
         raise _http(e) from e
-    log.info("renovación de acceso «%s» por %s", client.name, user)
+    log.info("OpenVPN access '%s' renewed by %s", client.name, user)
     return client
 
 
@@ -705,7 +705,7 @@ def openvpn_config(name: str, user: str = Depends(require_user)) -> Response:
         text = _openvpn().client_config(name)
     except VpnError as e:
         raise _http(e) from e
-    log.info("descarga de configuración de «%s» por %s", name, user)
+    log.info("config download for '%s' by %s", name, user)
     return PlainTextResponse(
         text, headers={"Content-Disposition": f'attachment; filename="{name}.ovpn"'}
     )

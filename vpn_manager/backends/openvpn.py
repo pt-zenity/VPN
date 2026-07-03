@@ -58,7 +58,7 @@ class OpenVpnBackend(VpnBackend):
         server_cn: str = "server",
         log_file: Path | None = None,
         server_conf: Path | None = None,
-        public_endpoint: str = "vpn.ejemplo.local",
+        public_endpoint: str = "vpn.sis2.xyz",
     ) -> None:
         self.pki_index = pki_index
         self.status_file = status_file
@@ -214,7 +214,7 @@ class OpenVpnBackend(VpnBackend):
     def create_client(self, name: str) -> VpnClient:
         name = self._check_name(name)
         if self._find(name) is not None:
-            raise AlreadyExists(f"Ya existe un acceso con el nombre «{name}».")
+            raise AlreadyExists(f"An account with the name '{name}' already exists.")
 
         if not self.sandbox:
             self._easyrsa("build-client-full", name, "nopass", batch=True)
@@ -241,7 +241,7 @@ class OpenVpnBackend(VpnBackend):
         name = self._check_name(name)
         found = self._find(name)
         if found is None:
-            raise NotFound(f"No existe ningún acceso llamado «{name}».")
+            raise NotFound(f"No account found with the name '{name}'.")
         idx, parts = found
         if parts[0] == "R":
             return VpnClient(
@@ -274,10 +274,10 @@ class OpenVpnBackend(VpnBackend):
         name = self._check_name(name)
         found = self._find(name)
         if found is None:
-            raise NotFound(f"No existe ningún acceso llamado «{name}».")
+            raise NotFound(f"No account found with the name '{name}'.")
         idx, parts = found
         if parts[0] == "R":
-            raise Forbidden("No se puede renovar un acceso retirado; crea uno nuevo.")
+            raise Forbidden("Cannot renew a revoked account; create a new one instead.")
 
         if not self.sandbox:
             self._easyrsa("renew", name, "nopass", batch=True)
@@ -304,9 +304,9 @@ class OpenVpnBackend(VpnBackend):
         name = self._check_name(name)
         found = self._find(name)
         if found is None:
-            raise NotFound(f"No existe ningún acceso llamado «{name}».")
+            raise NotFound(f"No account found with the name '{name}'.")
         if found[1][0] != "V":
-            raise Forbidden("Solo se puede descargar la configuración de un acceso activo.")
+            raise Forbidden("Configuration can only be downloaded for an active account.")
         cfg = self.client_dir / f"{name}.ovpn"
         if cfg.exists():
             return cfg.read_text(encoding="utf-8")
@@ -399,7 +399,7 @@ class OpenVpnBackend(VpnBackend):
         from .openvpn_schema import validate_directive
 
         if not self.server_conf:
-            raise VpnError("No hay fichero de configuración del servidor definido.")
+            raise VpnError("No server configuration file is defined.")
         cleaned: list[str] = []
         for key, value in directives:
             key = (key or "").strip()

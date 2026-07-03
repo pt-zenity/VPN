@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     openvpn_server_conf: Path = SANDBOX / "openvpn" / "server.conf"
     openvpn_service: str = "openvpn-server@server"
     # IP o dominio público al que se conectan los clientes (va en el .ovpn).
-    openvpn_public_endpoint: str = "vpn.ejemplo.local"
+    openvpn_public_endpoint: str = "vpn.sis2.xyz"
 
     # WireGuard
     wireguard_dir: Path = SANDBOX / "wireguard"
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     wireguard_show_file: Path = SANDBOX / "wireguard" / "wg-show.txt"
     wireguard_log_file: Path = SANDBOX / "wireguard" / "wireguard.log"
     wireguard_interface: str = "wg0"
-    wireguard_public_endpoint: str = "vpn.ejemplo.local"
+    wireguard_public_endpoint: str = "vpn.sis2.xyz"
     wireguard_dns: str = "1.1.1.1"
 
     # ── Autenticación del panel ────────────────────────────────────────────

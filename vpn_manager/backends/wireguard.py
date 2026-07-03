@@ -74,7 +74,7 @@ class WireGuardBackend(VpnBackend):
         sandbox: bool,
         interface: str = "wg0",
         log_file: Path | None = None,
-        public_endpoint: str = "vpn.ejemplo.local",
+        public_endpoint: str = "vpn.sis2.xyz",
         dns: str = "1.1.1.1",
     ) -> None:
         self.conf = conf
@@ -247,7 +247,7 @@ class WireGuardBackend(VpnBackend):
     def create_client(self, name: str) -> VpnClient:
         name = self._check_name(name)
         if self._find(name) is not None:
-            raise AlreadyExists(f"Ya existe un dispositivo con el nombre «{name}».")
+            raise AlreadyExists(f"A device with the name '{name}' already exists.")
 
         priv, pub = self._genkeypair()
         ip = self._next_ip()
@@ -264,7 +264,7 @@ class WireGuardBackend(VpnBackend):
         name = self._check_name(name)
         peer = self._find(name)
         if peer is None:
-            raise NotFound(f"No existe ningún dispositivo llamado «{name}».")
+            raise NotFound(f"No device found with the name '{name}'.")
         if not self.sandbox and peer["public_key"]:  # pragma: no cover
             self._wg("set", self.interface, "peer", peer["public_key"], "remove")
         self._remove_peer_block(name)
@@ -277,14 +277,14 @@ class WireGuardBackend(VpnBackend):
     def client_config(self, name: str) -> str:
         name = self._check_name(name)
         if self._find(name) is None:
-            raise NotFound(f"No existe ningún dispositivo llamado «{name}».")
+            raise NotFound(f"No device found with the name '{name}'.")
         cfg = self.client_dir / f"{name}.conf"
         if cfg.exists():
             return cfg.read_text(encoding="utf-8")
         # Si no se guardó (peer preexistente del fixture), genera una plantilla.
         peer = self._find(name)
         ip = (peer["allowed_ips"] or "10.9.0.0/32").split("/")[0]
-        return self._render_conf(name, "(clave-privada-del-dispositivo)", ip)
+        return self._render_conf(name, "(device-private-key)", ip)
 
     # ── Configuración del servidor ─────────────────────────────────────────
     def server_info(self) -> ServerInfo:
@@ -307,7 +307,7 @@ class WireGuardBackend(VpnBackend):
             if not s or s.startswith("#"):
                 continue
             if s.lower().startswith("privatekey"):
-                info.directives.append(ConfigDirective(key="PrivateKey", value="(oculta)"))
+                info.directives.append(ConfigDirective(key="PrivateKey", value="(hidden)"))
                 continue
             if "=" in s:
                 k, _, v = s.partition("=")
