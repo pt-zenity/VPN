@@ -1142,17 +1142,22 @@ async function caRevoke(name){
   }catch(e){ toast('Connection error.'); }
 }
 
-// Close modal on overlay click
-document.getElementById('ca-modal-overlay').addEventListener('click', function(e){
-  if(e.target===this) caModalClose();
+// Close modal on overlay click (element is below the script tag, so defer)
+document.addEventListener('DOMContentLoaded', function(){
+  const overlay = document.getElementById('ca-modal-overlay');
+  if(overlay) overlay.addEventListener('click', function(e){
+    if(e.target===this) caModalClose();
+  });
 });
 
-// Load recent when page shown
-const _origShowPage = showPage;
-function showPage(id){
-  _origShowPage(id);
-  if(id==='create-account') caLoadRecent();
-}
+// Extend showPage: also trigger caLoadRecent when Create Account is shown
+(function(){
+  const _base = showPage;
+  showPage = function(id){
+    _base(id);
+    if(id==='create-account') caLoadRecent();
+  };
+})();
 
 (async () => {
   await loadMe();
