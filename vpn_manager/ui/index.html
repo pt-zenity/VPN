@@ -305,10 +305,40 @@
         <div><h2>Server logs</h2><p class="hint" id="logs-hint">Last lines of the server log.</p></div>
         <button class="btn" onclick="loadLogs()">Refresh</button>
       </div>
-      <div class="panel"><pre class="logbox" id="logs">Loading…</pre></div>
+      <div class="panel"><pre class="logbox" id="logs-pre">Loading…</pre></div>
     </section>
 
-    <section id="users-section" class="page">
+    <section id="create-account" class="page">
+      <div class="sechead"><div><h2>Create Account</h2><p class="hint">Create a new VPN account (certificate) for a device or user. Choose the protocol, enter a name, then download or scan the configuration.</p></div></div>
+      <div class="ca-tabs">
+        <button class="ca-tab active" id="ca-tab-ovpn" onclick="caTabSwitch('openvpn')">OpenVPN</button>
+        <button class="ca-tab" id="ca-tab-wg" onclick="caTabSwitch('wireguard')">WireGuard</button>
+      </div>
+      <div class="ca-card" style="margin-bottom:16px">
+        <div class="ca-card-head">
+          <h3>New OpenVPN account</h3>
+          <p>Enter a short name — no spaces, e.g. <code>laptop-alice</code> or <code>phone-bob</code>.</p>
+        </div>
+        <div class="ca-card-body" id="ca-tab-ovpn-body">
+          <input type="text" id="ovpn-new-name" placeholder="Account name (e.g. laptop-alice)" maxlength="64" autocomplete="off"
+            onkeydown="if(event.key==='Enter')caCreate('openvpn')">
+          <div class="ca-card-err" id="ovpn-err"></div>
+          <button class="btn primary" id="ovpn-create-btn" onclick="caCreate('openvpn')">Create OpenVPN Account</button>
+        </div>
+        <div class="ca-card-body" id="ca-tab-wg-body" style="display:none">
+          <input type="text" id="wg-new-name" placeholder="Account name (e.g. phone-bob)" maxlength="64" autocomplete="off"
+            onkeydown="if(event.key==='Enter')caCreate('wireguard')">
+          <div class="ca-card-err" id="wg-err"></div>
+          <button class="btn primary" id="wg-create-btn" onclick="caCreate('wireguard')">Create WireGuard Account</button>
+        </div>
+      </div>
+      <div class="ca-recent">
+        <h2>Existing accounts</h2>
+        <div class="panel" id="ca-recent-list"><div class="empty">Loading…</div></div>
+      </div>
+    </section>
+
+    <section id="users" class="page">
       <div class="sechead">
         <div><h2>Panel users</h2><p class="hint">Who can access the panel and with what permissions. <b>Administrator</b>: full access. <b>Operator</b>: manages devices and the service. <b>Read only</b>: view only.</p></div>
         <button class="btn primary" id="user-add-btn" onclick="toggleUserForm(true)">Add user</button>
@@ -322,7 +352,7 @@
           <button class="btn" onclick="toggleUserForm(false)">Cancel</button>
         </div>
         <div class="formhint" id="u-hint" style="display:none"></div>
-        <div id="users"><div class="empty">Loading…</div></div>
+        <div id="users-list"><div class="empty">Loading…</div></div>
       </div>
     </section>
 
@@ -352,9 +382,9 @@
       <div id="sys-preflight"></div>
     </section>
 
-    <section id="account-section" class="page">
+    <section id="account" class="page">
       <div class="sechead"><div><h2>My account</h2><p class="hint">Your user account and two-factor authentication (2FA), which adds a one-time code to the login process.</p></div></div>
-      <div class="panel" id="account"><div class="empty">Loading…</div></div>
+      <div class="panel" id="account-panel"><div class="empty">Loading…</div></div>
     </section>
    </div>
   </main>
@@ -427,7 +457,7 @@ function renderService(st){
   tg.textContent = st.active?'Stop':'Start';
   tg.classList.toggle('danger', st.active);
   tg.classList.toggle('primary', !st.active);
-  const grp=document.querySelector('#servicio .grp'); if(grp) grp.style.display = can('service:control') ? '' : 'none';
+  const grp=document.querySelector('#service .grp'); if(grp) grp.style.display = can('service:control') ? '' : 'none';
 }
 
 function renderServer(sv){
@@ -480,7 +510,7 @@ function showPage(id){
 // ── My account / 2FA ──
 function loadAccount(){
   const on = !!_me.totp_enabled;
-  document.getElementById('account').innerHTML = `
+  document.getElementById('account-panel').innerHTML = `
     <div class="row"><div><div class="name">${esc(_me.user||'')}</div><div class="meta">${esc(_me.role_label||'')}</div></div></div>
     <div class="row"><div>
         <div class="name">Two-factor authentication (2FA)</div>
@@ -650,7 +680,7 @@ async function loadUsers(){
     const d = await fetch('/api/users').then(r=>r.json());
     const sel=document.getElementById('u-role');
     if(sel && !sel.options.length) sel.innerHTML=d.roles.map(r=>`<option value="${r.id}">${esc(r.label)}</option>`).join('');
-    document.getElementById('users').innerHTML = d.users.map(u=>{
+    document.getElementById('users-list').innerHTML = d.users.map(u=>{
       const isMe = u.username===_me.user;
       return `<div class="row"><div><div class="name">${esc(u.username)}${isMe?' <span class="sub">(you)</span>':''}</div>
         <div class="meta">${esc(u.role_label)}</div></div>
@@ -660,7 +690,7 @@ async function loadUsers(){
           ${isMe?'':`<button class="act danger" onclick="deleteUser('${esc(u.username)}')">Delete</button>`}
         </div></div></div>`;
     }).join('');
-  }catch(e){ document.getElementById('users').innerHTML='<div class="err">Could not load users.</div>'; }
+  }catch(e){ document.getElementById('users-list').innerHTML='<div class="err">Could not load users.</div>'; }
 }
 function toggleUserForm(open){ document.getElementById('user-form').classList.toggle('open',open); document.getElementById('user-add-btn').style.visibility=open?'hidden':'visible'; uhint(''); }
 function uhint(m,bad){ const h=document.getElementById('u-hint'); h.textContent=m; h.className='formhint'+(bad?' bad':''); h.style.display=m?'block':'none'; }
@@ -853,14 +883,14 @@ function renderConns(cn){
 async function loadLogs(){
   try{
     const d = await fetch(api('/logs')).then(r=>r.json());
-    const box = document.getElementById('logs');
+    const box = document.getElementById('logs-pre');
     if(!d.lines || !d.lines.length){ box.textContent='(no logs available)'; return; }
     box.innerHTML = d.lines.map(l=>{
       const cls = /ERROR|revoked|reset|fail/i.test(l) ? 'lg-err' : (/Completed|established|OK/i.test(l)?'lg-ok':'');
       return `<span class="${cls}">${esc(l)}</span>`;
     }).join('\n');
     box.scrollTop = box.scrollHeight;
-  }catch(e){ document.getElementById('logs').textContent='Could not load logs.'; }
+  }catch(e){ document.getElementById('logs-pre').textContent='Could not load logs.'; }
 }
 
 // ── Service actions ──
@@ -943,6 +973,10 @@ function caTabSwitch(backend){
   _caCurrentTab = backend;
   document.getElementById('ca-tab-ovpn').classList.toggle('active', backend==='openvpn');
   document.getElementById('ca-tab-wg').classList.toggle('active', backend==='wireguard');
+  const ovpnBody = document.getElementById('ca-tab-ovpn-body');
+  const wgBody   = document.getElementById('ca-tab-wg-body');
+  if(ovpnBody) ovpnBody.style.display = backend==='openvpn' ? '' : 'none';
+  if(wgBody)   wgBody.style.display   = backend==='wireguard' ? '' : 'none';
   caLoadRecent();
 }
 
