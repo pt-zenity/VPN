@@ -729,6 +729,20 @@ def openvpn_config(name: str, user: str = Depends(require_user)) -> Response:
     )
 
 
+@app.get("/api/openvpn/clients/{name}/qr", dependencies=_PROTECTED)
+def openvpn_qr(name: str) -> Response:
+    try:
+        import segno
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Missing 'segno' dependency for QR generation.")
+    try:
+        config = _openvpn().client_config(name)
+    except VpnError as e:
+        raise _http(e) from e
+    qr = segno.make(config, error="m")
+    return Response(content=qr.svg_inline(scale=3, border=2), media_type="image/svg+xml")
+
+
 @app.post("/api/openvpn/clients/{name}/save", dependencies=_PROTECTED)
 def openvpn_save(name: str, body: SavePath, user: str = Depends(require_perm("clients:write"))) -> dict:
     return _deliver_save(_openvpn(), name, "ovpn", body.path, user)

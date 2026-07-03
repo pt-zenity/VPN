@@ -659,6 +659,17 @@ section.page.active { display: block; }
 .act:hover { color: var(--accent); }
 .act.danger { color: var(--stop); }
 .act.danger:hover { color: var(--stop-2); }
+.act.qr-act {
+  color: var(--accent-3);
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--border-glow);
+  background: var(--accent-soft);
+  font-size: 11.5px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.act.qr-act:hover { background: rgba(99,102,241,.2); border-color: var(--accent); color: var(--accent); }
 
 /* ── Sub text ── */
 .sub { color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -1143,6 +1154,239 @@ section.page.active { display: block; }
 }
 .ca-badge.ovpn { background: rgba(245,158,11,.15); color: var(--warn); border: 1px solid var(--warn-border); }
 .ca-badge.wg   { background: var(--accent-soft);   color: var(--accent-3); border: 1px solid var(--border-glow); }
+
+/* ════════════════════════════════════════════════
+   QR CONNECT MODAL
+════════════════════════════════════════════════ */
+.qr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.8);
+  z-index: 1100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(8px);
+}
+.qr-modal-overlay.open { display: flex; }
+
+.qr-modal {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xl);
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg), 0 0 48px rgba(99,102,241,.18);
+  position: relative;
+  animation: qr-pop .22s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes qr-pop {
+  from { opacity:0; transform: scale(.88) translateY(12px); }
+  to   { opacity:1; transform: scale(1)   translateY(0); }
+}
+/* Gradient top border */
+.qr-modal::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent-3), transparent);
+}
+
+.qr-modal-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.qr-modal-head-left { display: flex; align-items: center; gap: 10px; }
+.qr-modal-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--r);
+  background: var(--accent-soft);
+  border: 1px solid var(--border-glow);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.qr-modal-icon svg { width: 18px; height: 18px; fill: var(--accent-3); }
+.qr-modal-title { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+.qr-modal-sub   { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.qr-modal-close {
+  border: 1px solid var(--border);
+  background: var(--surface-3);
+  width: 28px; height: 28px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+  flex-shrink: 0;
+}
+.qr-modal-close:hover { background: var(--surface-4); color: var(--ink); }
+
+.qr-modal-body { padding: 24px 20px; }
+
+/* Scan banner */
+.qr-scan-banner {
+  background: var(--accent-soft);
+  border: 1px solid var(--border-glow);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.qr-scan-banner svg { width: 18px; height: 18px; fill: var(--accent-3); flex-shrink: 0; }
+.qr-scan-banner-text { font-size: 13px; font-weight: 600; color: var(--accent-text); line-height: 1.4; }
+.qr-scan-banner-text span { display: block; font-size: 11.5px; font-weight: 400; color: var(--muted); margin-top: 1px; }
+
+/* QR code display */
+.qr-code-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.qr-code-wrap {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 8px 32px rgba(0,0,0,.4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.qr-code-wrap svg,
+.qr-code-wrap img {
+  width: 200px !important;
+  height: 200px !important;
+  display: block;
+  border-radius: 6px;
+}
+.qr-loading-ring {
+  width: 200px; height: 200px;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 12px;
+}
+.qr-loading-ring::before {
+  content: '';
+  width: 36px; height: 36px;
+  border: 3px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.qr-loading-ring span { font-size: 12px; color: var(--muted); }
+
+.qr-client-name {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: .04em;
+}
+.qr-client-name strong { color: var(--ink-2); }
+
+/* App instructions */
+.qr-app-steps {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.qr-app-steps-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 10px;
+}
+.qr-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin-bottom: 7px;
+}
+.qr-step:last-child { margin-bottom: 0; }
+.qr-step-num {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid var(--border-glow);
+  color: var(--accent-3);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.qr-app-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.qr-app-badge.wg   { background: var(--accent-soft); color: var(--accent-3); border: 1px solid var(--border-glow); }
+.qr-app-badge.ovpn { background: rgba(245,158,11,.12); color: var(--warn); border: 1px solid rgba(245,158,11,.25); }
+
+/* Action buttons row */
+.qr-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.qr-actions .btn {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.qr-actions .btn svg { width: 13px; height: 13px; fill: currentColor; }
+
+.qr-modal-foot {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  background: var(--surface-2);
+}
+
+/* QR error state */
+.qr-err {
+  text-align: center;
+  padding: 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.qr-err svg { width: 32px; height: 32px; fill: var(--faint); display: block; margin: 0 auto 8px; }
+
+@media (max-width: 480px) {
+  .qr-modal { border-radius: var(--r-lg) var(--r-lg) 0 0; max-height: 95vh; align-self: flex-end; }
+  .qr-modal-overlay { align-items: flex-end; padding: 0; }
+  .qr-code-wrap svg, .qr-code-wrap img { width: 170px !important; height: 170px !important; }
+  .qr-loading-ring { width: 170px; height: 170px; }
+}
 
 /* ════════════════════════════════════════════════
    SYSTEM PAGE
@@ -2674,12 +2918,12 @@ function renderClients(cl){
     const w   = can('clients:write');
     let actions='';
     if(c.status==='valid'){
-      const qr = BACKEND==='wireguard' ? `<a class="act" href="${api('/clients/'+enc+'/qr')}" target="_blank">QR code</a>` : '';
+      const qrBtn = `<button class="act qr-act" onclick="showQR('${n}')">&#x25A6; QR connect</button>`;
       const wr = w ? `<button class="act" onclick="saveConfig('${n}')">Save to server</button>
         <button class="act" onclick="emailConfig('${n}')">Send by email</button>
         <button class="act danger" onclick="revokeClient('${n}')">Revoke</button>` : '';
       actions=`<div class="actions">
-        <a class="act" href="${api('/clients/'+enc+'/config')}" download>Download</a>${qr}${wr}</div>`;
+        <a class="act" href="${api('/clients/'+enc+'/config')}" download>Download</a>${qrBtn}${wr}</div>`;
     }else if(c.status==='expired'&&w){
       actions=`<div class="actions"><button class="act" onclick="renewClient('${n}')">Renew access</button></div>`;
     }
@@ -3014,6 +3258,111 @@ async function caShowQR(name){
     else{ qrC.innerHTML='<div style="color:var(--muted);font-size:13px">QR not available</div>'; }
   }catch(e){ qrC.innerHTML='<div style="color:var(--muted);font-size:13px">Connection error</div>'; }
 }
+/* ══════════════════════════════════════════════
+   QR CONNECT MODAL  — shows for any backend
+══════════════════════════════════════════════ */
+let _qrCurrentName = '';
+let _qrCurrentConfig = '';
+
+async function showQR(name) {
+  _qrCurrentName = name;
+  _qrCurrentConfig = '';
+
+  const overlay = document.getElementById('qr-modal-overlay');
+  const title   = document.getElementById('qr-modal-title');
+  const sub     = document.getElementById('qr-modal-sub');
+  const qrWrap  = document.getElementById('qr-code-container');
+  const nameEl  = document.getElementById('qr-client-name');
+  const stepsEl = document.getElementById('qr-steps');
+  const banner  = document.getElementById('qr-scan-banner-text');
+
+  const isWg = BACKEND === 'wireguard';
+
+  // Header
+  title.textContent  = esc(name);
+  sub.textContent    = isWg ? 'WireGuard — Auto-connect via QR' : 'OpenVPN — Auto-connect via QR';
+  nameEl.innerHTML   = `Config: <strong>${esc(name)}</strong>`;
+
+  // Banner text
+  banner.innerHTML = 'Scan to connect automatically'
+    + `<span>Open ${isWg ? 'WireGuard' : 'OpenVPN Connect'} app and scan this code</span>`;
+
+  // App steps
+  stepsEl.innerHTML = isWg ? `
+    <div class="qr-step"><span class="qr-step-num">1</span>Install <span class="qr-app-badge wg">WireGuard</span> from App Store / Play Store</div>
+    <div class="qr-step"><span class="qr-step-num">2</span>Tap <strong>+</strong> → <em>Scan from QR Code</em></div>
+    <div class="qr-step"><span class="qr-step-num">3</span>Point camera at QR code above — tunnel activates instantly</div>
+  ` : `
+    <div class="qr-step"><span class="qr-step-num">1</span>Install <span class="qr-app-badge ovpn">OpenVPN Connect</span> from App Store / Play Store</div>
+    <div class="qr-step"><span class="qr-step-num">2</span>Tap <strong>+</strong> → <em>Scan QR Code</em></div>
+    <div class="qr-step"><span class="qr-step-num">3</span>Confirm import, then tap <em>Connect</em> to start tunnel</div>
+  `;
+
+  // Show loading state
+  qrWrap.innerHTML = `<div class="qr-loading-ring"><span>Generating QR…</span></div>`;
+
+  overlay.classList.add('open');
+
+  // Fetch QR + config in parallel
+  const enc = encodeURIComponent(name);
+  const qrUrl  = `/api/${BACKEND}/clients/${enc}/qr`;
+  const cfgUrl = `/api/${BACKEND}/clients/${enc}/config`;
+
+  try {
+    const [qrRes, cfgRes] = await Promise.all([
+      fetch(qrUrl),
+      fetch(cfgUrl)
+    ]);
+
+    // Render QR
+    if (qrRes.ok) {
+      const svg = await qrRes.text();
+      qrWrap.innerHTML = svg;
+      const s = qrWrap.querySelector('svg');
+      if (s) { s.style.cssText = 'width:200px;height:200px;display:block;border-radius:6px;'; }
+    } else {
+      const isLarge = qrRes.status === 413 || qrRes.status === 400;
+      qrWrap.innerHTML = `
+        <div class="qr-err">
+          <svg viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 4a1 1 0 011 1v4a1 1 0 01-2 0V7a1 1 0 011-1zm0 8a1 1 0 110-2 1 1 0 010 2z"/></svg>
+          ${isLarge ? 'Config too large for QR — download the file instead' : 'QR not available'}
+        </div>`;
+    }
+
+    // Store config for download / copy
+    if (cfgRes.ok) {
+      _qrCurrentConfig = await cfgRes.text();
+    }
+  } catch(e) {
+    qrWrap.innerHTML = `<div class="qr-err">
+      <svg viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 4a1 1 0 011 1v4a1 1 0 01-2 0V7a1 1 0 011-1zm0 8a1 1 0 110-2 1 1 0 010 2z"/></svg>
+      Connection error
+    </div>`;
+  }
+}
+
+function qrModalClose() {
+  document.getElementById('qr-modal-overlay').classList.remove('open');
+}
+
+function qrDownloadConfig() {
+  if (!_qrCurrentConfig) { toast('Config not loaded yet', 'err'); return; }
+  const ext  = BACKEND === 'wireguard' ? 'conf' : 'ovpn';
+  const blob = new Blob([_qrCurrentConfig], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = _qrCurrentName + '.' + ext; a.click();
+  URL.revokeObjectURL(url);
+  toast('Config downloaded ✓', 'ok');
+}
+
+function qrCopyConfig() {
+  if (!_qrCurrentConfig) { toast('Config not loaded yet', 'err'); return; }
+  navigator.clipboard.writeText(_qrCurrentConfig)
+    .then(() => toast('Copied to clipboard ✓', 'ok'))
+    .catch(() => toast('Copy failed', 'err'));
+}
+
 async function caRevoke(name){
   if(!confirm('Revoke access for "'+name+'"?\n\nThis cannot be undone.')) return;
   try{
@@ -3030,6 +3379,17 @@ document.addEventListener('DOMContentLoaded', function(){
   const overlay = document.getElementById('ca-modal-overlay');
   if(overlay) overlay.addEventListener('click', function(e){
     if(e.target===this) caModalClose();
+  });
+  const qrOverlay = document.getElementById('qr-modal-overlay');
+  if(qrOverlay) qrOverlay.addEventListener('click', function(e){
+    if(e.target===this) qrModalClose();
+  });
+  // ESC key closes any open modal
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape'){
+      qrModalClose();
+      caModalClose();
+    }
   });
 });
 
@@ -3057,6 +3417,80 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 setInterval(load, 10000);
 </script>
+
+<!-- ═══════════════════════════════════════
+     QR CONNECT MODAL
+═══════════════════════════════════════ -->
+<div class="qr-modal-overlay" id="qr-modal-overlay">
+  <div class="qr-modal">
+    <!-- Head -->
+    <div class="qr-modal-head">
+      <div class="qr-modal-head-left">
+        <div class="qr-modal-icon">
+          <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 3h5v5H3V3zm1 1v3h3V4H4zm1 1h1v1H5V5zM12 3h5v5h-5V3zm1 1v3h3V4h-3zm1 1h1v1h-1V5zM3 12h5v5H3v-5zm1 1v3h3v-3H4zm1 1h1v1H5v-1zM13 13h1v1h-1v-1zM12 12h1v1h-1v-1zM14 12h1v1h-1v-1zM16 12h1v2h-1v-2zM12 14h2v1h-2v-1zM14 15h1v1h-1v-1zM12 16h2v1h-2v-1zM15 15h2v2h-2v-2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="qr-modal-title" id="qr-modal-title">Device Name</div>
+          <div class="qr-modal-sub"   id="qr-modal-sub">Auto-connect via QR</div>
+        </div>
+      </div>
+      <button class="qr-modal-close" onclick="qrModalClose()">&#x2715;</button>
+    </div>
+
+    <!-- Body -->
+    <div class="qr-modal-body">
+      <!-- Scan banner -->
+      <div class="qr-scan-banner">
+        <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 1L3 4.5v5.25C3 13.7 6.1 17.35 10 19c3.9-1.65 7-5.3 7-9.25V4.5L10 1z"/>
+        </svg>
+        <div class="qr-scan-banner-text" id="qr-scan-banner-text">
+          Scan to connect automatically
+          <span>Open VPN app and scan this code</span>
+        </div>
+      </div>
+
+      <!-- QR code -->
+      <div class="qr-code-area">
+        <div class="qr-code-wrap">
+          <div id="qr-code-container">
+            <div class="qr-loading-ring"><span>Generating…</span></div>
+          </div>
+        </div>
+        <div class="qr-client-name" id="qr-client-name">Config: <strong>—</strong></div>
+      </div>
+
+      <!-- App steps -->
+      <div class="qr-app-steps">
+        <div class="qr-app-steps-title">How to connect</div>
+        <div id="qr-steps">
+          <div class="qr-step"><span class="qr-step-num">1</span>Install the VPN app on your device</div>
+          <div class="qr-step"><span class="qr-step-num">2</span>Tap <strong>+</strong> → <em>Scan QR Code</em></div>
+          <div class="qr-step"><span class="qr-step-num">3</span>Confirm and connect</div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="qr-actions">
+        <button class="btn primary" onclick="qrDownloadConfig()">
+          <svg viewBox="0 0 20 20"><path d="M3 17h14v-2H3v2zm7-4l5-6h-3V3H8v4H5l5 6z"/></svg>
+          Download
+        </button>
+        <button class="btn" onclick="qrCopyConfig()">
+          <svg viewBox="0 0 20 20"><path d="M8 3a1 1 0 000 2h1v1H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V8a2 2 0 00-2-2h-4V5h1a1 1 0 000-2H8zm1 4h2v1H9V7zm3 2h1v1h-1V9zm-6 0h1v1H6V9zm3 2h2v1H9v-1zm-3 0h1v1H6v-1zm3 2h2v1H9v-1zm-3 0h1v1H6v-1z"/></svg>
+          Copy config
+        </button>
+      </div>
+    </div>
+
+    <!-- Foot -->
+    <div class="qr-modal-foot">
+      <button class="btn" onclick="qrModalClose()">Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════
      CREATE ACCOUNT RESULT MODAL
