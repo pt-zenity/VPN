@@ -187,6 +187,7 @@
     <div class="foot">
       <div class="me-chip" id="me-chip" style="display:none"><span class="me-u" id="me-user">—</span><span class="me-r" id="me-role"></span></div>
       <form method="post" action="/logout"><button class="logout" type="submit">Sign out</button></form>
+      <div id="ver-badge" style="margin-top:10px;text-align:center;font-size:11px;color:#4a5a56;letter-spacing:.02em">—</div>
     </div>
   </aside>
 
@@ -577,6 +578,12 @@ async function loadMe(){
   document.getElementById('nav-users').style.display = can('users:manage') ? '' : 'none';
   document.getElementById('nav-activity').style.display = can('audit:read') ? '' : 'none';
   applyPerms();
+  // Show version badge
+  try{
+    const v = await fetch('/api/version').then(r=>r.json());
+    const vb = document.getElementById('ver-badge');
+    if(vb) vb.textContent = 'v' + (v.version||'?');
+  }catch(e){}
 }
 function applyPerms(){
   const ab=document.getElementById('add-btn'); if(ab) ab.style.display = can('clients:write') ? '' : 'none';

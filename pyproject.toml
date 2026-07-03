@@ -1,7 +1,7 @@
 [project]
 name = "vpn-manager"
-version = "0.3.0"
-description = "Panel web para gestionar servidores VPN (OpenVPN y WireGuard)"
+version = "1.0.0"
+description = "Web panel for managing VPN servers (OpenVPN and WireGuard)"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110",

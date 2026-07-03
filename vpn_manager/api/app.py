@@ -1,9 +1,7 @@
-"""API FastAPI del VPN Manager.
+"""VPN Manager — FastAPI backend.
 
-Fase 1: lectura de OpenVPN (estado, clientes, conexiones).
-Fase 2: escritura de OpenVPN (alta, revocación, descarga de configuración).
-Autenticación: login con sesión en cookie firmada; todo protegido salvo /login
-y /health.
+Authentication: login with signed session cookie; everything protected except
+/login, /health and /api/version.
 """
 from __future__ import annotations
 
@@ -17,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import audit, auth, bootstrap, delivery, installer, preflight, totp, users
+from .. import __version__, audit, auth, bootstrap, delivery, installer, preflight, totp, users
 from ..backends.base import (
     AlreadyExists,
     Forbidden,
@@ -157,7 +155,7 @@ def _deliver_email(backend, name: str, ext: str, email: str, user: str) -> dict:
     return result
 
 
-app = FastAPI(title="VPN Manager", version="0.3.0")
+app = FastAPI(title="VPN Manager", version=__version__)
 
 
 class _Metrics:
@@ -304,7 +302,13 @@ def logout(request: Request):
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "sandbox": settings.sandbox}
+    return {"status": "ok", "sandbox": settings.sandbox, "version": __version__}
+
+
+@app.get("/api/version")
+def version_info() -> dict:
+    """Return current application version (public endpoint)."""
+    return {"version": __version__}
 
 
 @app.get("/metrics")
